@@ -25,7 +25,7 @@
 
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxdH2urI87l4f3mY1J15fUtmi05Rqme-BVzexy3NPgjurrKevEGaAXZrvv46mIX8XK-/exec";
         const SECRET_KEY_PARAM = 'guru'; 
-        const LOGO_URL = "https://i.ibb.co.com/pjFNr8Fj/sipanda2.png";
+        const LOGO_URL = "https://i.ibb.co.com/pjFNr8Fj/sipanda2.png"; 
 
         const MAPEL_LIST = [
             "Pendidikan Pancasila", 
@@ -50,7 +50,9 @@
                 'file-text': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
                 'message-square': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
                 'save': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
-                'download': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                'download': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
+                'edit': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>,
+                'x': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             };
             return icons[name] || null;
         };
@@ -111,7 +113,7 @@
                         setLoading(false);
                     })
                     .catch(err => {
-                        console.error("Gagal koneksi ke server:", err);
+                        console.error("Gagal koneksi ke spreadsheet:", err);
                         setLoading(false);
                     });
             }, []);
@@ -135,7 +137,7 @@
                 setView('exam');
             };
 
-            const finishExam = (examId, score) => {
+            const finishExam = (examId, score, cheatCount) => {
                 if (document.fullscreenElement || document.webkitFullscreenElement) {
                     if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
                 }
@@ -149,7 +151,8 @@
                     nama: currentUser.name,
                     ujian: examTitle,
                     nilai: score,
-                    catatan: ""
+                    catatan: "",
+                    pelanggaran: cheatCount || 0
                 };
 
                 setAppData(prev => ({
@@ -298,7 +301,7 @@
                 const validPassHash = settings.adminPassHash || '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
                 if (adminUser === validUser && inputPassHash === validPassHash) {
-                    onLogin({ name: 'Guru / Admin' }, 'admin');
+                    onLogin({ name: 'Guru' }, 'admin');
                 } else {
                     setError('Username atau Password salah.');
                 }
@@ -311,13 +314,13 @@
                         <h2 className="text-2xl font-black text-slate-800">SI-PANDA</h2>
                         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Sistem Informasi Penugasan Digital Anak</p>
                         <p className="text-sm text-slate-500 mt-2 px-4 leading-relaxed">
-                            Hai! Silakan masukkan NISN dan nama lengkap untuk lihat materi dan mengerjakan tugas rumah.
+                            Hai ! Masukkan NISN dan nama lengkap untuk mulai belajar materi & mengerjakan tugas.
                         </p>
                     </div>
 
                     <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100">
                         <h3 className="text-xl font-bold text-center mb-6 text-slate-800">
-                            {isAdminRoute ? 'Masuk' : 'Login'}
+                            {isAdminRoute ? 'Login Admin' : 'LOGIN'}
                         </h3>
 
                         {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-start gap-2"><Icon name="alert-circle" size={18} className="shrink-0 mt-0.5"/>{error}</div>}
@@ -366,11 +369,10 @@
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl font-bold">Hallo, {currentUser.name}!</h2>
-                            <p className="text-slate-500 text-sm mt-1">Berikut adalah ringkasan materi, riwayat dan daftar tugas rumahmu.</p>
+                            <p className="text-slate-500 text-sm mt-1">Lihat ringkasan materi pelajaran dan daftar tugas rumahmu.</p>
                         </div>
                     </div>
 
-                    {/* CARD STATISTIK INFORMATIF */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
                             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
@@ -403,18 +405,14 @@
                         </div>
                     </div>
 
-                    {/* 1. INFORMASI RINGKASAN MATERI PDF */}
-                    <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div>
-                            <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Pusat Belajar</span>
-                            <h3 className="text-lg font-bold">Unduh & Pelajari Ringkasan Materi</h3>
-                            <p className="text-indigo-100 text-sm mt-1">Siswa disarankan membaca atau mengunduh ringkasan materi di bawah ini dan mulai mengerjakan tugas.</p>
-                        </div>
+                    <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-md">
+                        <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Pusat Belajar</span>
+                        <h3 className="text-lg font-bold">Unduh & Pelajari Ringkasan Materi</h3>
+                        <p className="text-indigo-100 text-sm mt-1">Siswa disarankan membaca atau mengunduh ringkasan materi sebelum mulai mengerjakan tugas.</p>
                     </div>
 
-                    {/* 2. CARD MAPEL RINGKASAN MATERI */}
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-3">Daftar Materi Pelajaran</h3>
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Daftar Mata Pelajaran</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {MAPEL_LIST.map((mapel, idx) => (
                                 <button 
@@ -434,7 +432,6 @@
                         </div>
                     </div>
 
-                    {/* DAFTAR TUGAS HARIAN */}
                     <div>
                         <h3 className="text-lg font-bold text-slate-800 mb-3">Daftar Tugas</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -475,7 +472,7 @@
                                             <div className="mt-5 pt-3 border-t border-slate-100">
                                                 {isDone ? (
                                                     <button disabled className="w-full py-2.5 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed">
-                                                        Tugas Telah Selesai
+                                                        Tugas Selesai
                                                     </button>
                                                 ) : (
                                                     <button onClick={() => onStartExam(exam)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
@@ -493,7 +490,6 @@
             );
         }
 
-        // 3. HALAMAN DAFTAR JUDUL MATERI PER MAPEL (YANG DIKLIK)
         function DaftarMateriView({ mapel, materiList, onBack }) {
             return (
                 <div className="space-y-6">
@@ -504,7 +500,7 @@
                             </button>
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800">{mapel}</h2>
-                                <p className="text-xs text-slate-500">Daftar ringkasan materi pembelajaran</p>
+                                <p className="text-xs text-slate-500">Daftar ringkasan materi</p>
                             </div>
                         </div>
                     </div>
@@ -588,7 +584,11 @@
                 const preventDefault = e => e.preventDefault();
                 const handleVisibility = () => {
                     if (document.hidden) {
-                        setCheatWarningCount(prev => prev + 1);
+                        setCheatWarningCount(prev => {
+                            const newCount = prev + 1;
+                            localStorage.setItem(sessionKey, JSON.stringify({ answers, timeLeft, shuffledQuestions, cheatWarningCount: newCount }));
+                            return newCount;
+                        });
                         setShowCheatModal(true);
                     }
                 };
@@ -602,7 +602,7 @@
                     document.removeEventListener('paste', preventDefault);
                     document.removeEventListener('visibilitychange', handleVisibility);
                 };
-            }, [isFinished]);
+            }, [isFinished, answers, timeLeft, shuffledQuestions]);
 
             const handleAnswer = (qId, optIdx) => {
                 const newAns = { ...answers, [qId]: optIdx };
@@ -619,7 +619,7 @@
                 shuffledQuestions.forEach(q => { if (answers[q.id] === q.answer) correct++; });
                 const score = Math.round((correct / shuffledQuestions.length) * 100);
                 localStorage.removeItem(sessionKey);
-                onFinish(exam.id, score);
+                onFinish(exam.id, score, cheatWarningCount);
             };
 
             const formatTime = s => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
@@ -633,7 +633,7 @@
                             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border-t-8 border-red-600">
                                 <h3 className="text-2xl font-black text-slate-800 mb-2 uppercase">Peringatan Keras!</h3>
                                 <p className="text-slate-600 text-sm mb-4">Dilarang meninggalkan halaman ujian.</p>
-                                <div className="bg-red-50 text-red-800 p-3 rounded-lg mb-6 font-bold">Pelanggaran Tercatat: {cheatWarningCount} Kali</div>
+                                <div className="bg-red-50 text-red-800 p-3 rounded-lg mb-6 font-bold">Pelanggaranmu: {cheatWarningCount} Kali</div>
                                 <button onClick={() => setShowCheatModal(false)} className="w-full py-3.5 rounded-xl font-bold bg-red-600 text-white shadow-lg">KEMBALI</button>
                             </div>
                         </div>
@@ -698,42 +698,114 @@
             );
         }
 
-        function ResultRow({ r, onUpdateCatatan }) {
-            const [catatanText, setCatatanText] = useState(r.catatan || "");
-            const [isSaved, setIsSaved] = useState(false);
+        // Komponen Modal Pop-up Catatan Guru
+        function NoteModal({ r, onClose, onSave }) {
+            const [text, setText] = useState(r.catatan || "");
 
-            const handleSave = () => {
-                onUpdateCatatan(r.nisn, r.ujian, catatanText);
-                setIsSaved(true);
-                setTimeout(() => setIsSaved(false), 2000);
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(r.nisn, r.ujian, text);
+                onClose();
             };
 
             return (
-                <tr className="border-b hover:bg-slate-50/50">
-                    <td className="p-3 text-xs text-slate-500">{r.waktu}</td>
-                    <td className="p-3 font-mono">{r.nisn}</td>
-                    <td className="p-3 font-bold">{r.nama}</td>
-                    <td className="p-3">{r.ujian}</td>
-                    <td className="p-3 text-center font-bold text-blue-600">{r.nilai}</td>
-                    <td className="p-3">
-                        <div className="flex items-center gap-2">
-                            <input 
-                                type="text" 
-                                value={catatanText} 
-                                onChange={(e) => setCatatanText(e.target.value)} 
-                                placeholder="Tulis catatan..." 
-                                className="px-3 py-1.5 border rounded-lg text-xs w-full outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            />
-                            <button 
-                                onClick={handleSave} 
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-1 shrink-0 transition-colors ${isSaved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                title="Simpan Catatan"
-                            >
-                                <Icon name="save" size={14} /> {isSaved ? 'Tersimpan' : 'Simpan'}
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in border border-slate-100">
+                        <div className="flex justify-between items-center mb-4 border-b pb-3">
+                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                <Icon name="message-square" size={20} className="text-blue-600" /> Beri Catatan
+                            </h3>
+                            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                <Icon name="x" size={20} />
                             </button>
                         </div>
-                    </td>
-                </tr>
+
+                        {/* Identitas Siswa yang dikomentari agar guru yakin */}
+                        <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 mb-4 text-xs space-y-1.5">
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Nama Siswa:</span>
+                                <span className="font-bold text-slate-800">{r.nama}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">NISN:</span>
+                                <span className="font-mono font-semibold text-slate-700">{r.nisn}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Mapel:</span>
+                                <span className="font-semibold text-blue-700">{r.ujian}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Nilai:</span>
+                                <span className="font-black text-green-600">{r.nilai}</span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan</label>
+                                <textarea 
+                                    rows="3"
+                                    value={text} 
+                                    onChange={(e) => setText(e.target.value)} 
+                                    placeholder="Tuliskan catatan untuk siswa..." 
+                                    className="w-full px-3.5 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    autoFocus
+                                ></textarea>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors">
+                                    Batal
+                                </button>
+                                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                    <Icon name="save" size={14} /> Simpan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Komponen Baris Tabel Rekap
+        function ResultRow({ r, onUpdateCatatan }) {
+            const [showModal, setShowModal] = useState(false);
+
+            return (
+                <>
+                    <tr className="border-b hover:bg-slate-50/50">
+                        <td className="p-3 text-xs text-slate-500 whitespace-nowrap">{r.waktu}</td>
+                        <td className="p-3 font-mono">{r.nisn}</td>
+                        <td className="p-3 font-bold">{r.nama}</td>
+                        <td className="p-3">{r.ujian}</td>
+                        <td className="p-3 text-center font-bold text-blue-600">{r.nilai}</td>
+                        <td className="p-3 text-center">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-block ${Number(r.pelanggaran) > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                {r.pelanggaran || 0} Kali
+                            </span>
+                        </td>
+                        <td className="p-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-600 italic truncate max-w-[150px] sm:max-w-xs">{r.catatan || '(Belum ada catatan)'}</span>
+                                <button 
+                                    onClick={() => setShowModal(true)} 
+                                    className="ml-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0 border border-blue-200"
+                                    title="Beri/Ubah Catatan"
+                                >
+                                    <Icon name="edit" size={14} /> <span>Catatan</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    {showModal && (
+                        <NoteModal 
+                            r={r} 
+                            onClose={() => setShowModal(false)} 
+                            onSave={onUpdateCatatan} 
+                        />
+                    )}
+                </>
             );
         }
 
@@ -744,15 +816,15 @@
                     <div className="w-full md:w-64 bg-slate-50 border-r p-4">
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Menu Guru</h2>
                         <nav className="space-y-1">
-                            <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status Tugas</button>
-                            <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Hasil & Catatan</button>
+                            <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
+                            <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
                         </nav>
                     </div>
                     <div className="flex-1 p-6 overflow-y-auto">
                         {activeTab === 'exams' && (
                             <div>
                                 <h3 className="text-lg font-bold mb-2">Kelola Status</h3>
-                                <p className="text-xs text-slate-500 mb-6">Klik tombol status di bawah untuk mengaktifkan atau menonaktifkan tugas.</p>
+                                <p className="text-xs text-slate-500 mb-6">Klik tombol status untuk mengaktifkan atau menonaktifkan tugas.</p>
                                 <div className="space-y-3">
                                     {exams.map(e => (
                                         <div key={e.id} className="border p-4 rounded-xl bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
@@ -774,7 +846,7 @@
                         {activeTab === 'results' && (
                             <div>
                                 <h3 className="text-lg font-bold mb-2">Rekap Nilai & Berikan Catatan</h3>
-                                <p className="text-xs text-slate-500 mb-6">Ketik catatan , lalu klik tombol Simpan.</p>
+                                <p className="text-xs text-slate-500 mb-6">Klik tombol "Catatan" untuk membuka form komentar.</p>
                                 <div className="overflow-x-auto border rounded-xl bg-white">
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-slate-50 border-b">
@@ -784,15 +856,16 @@
                                                 <th className="p-3">Nama</th>
                                                 <th className="p-3">Ujian</th>
                                                 <th className="p-3 text-center">Nilai</th>
-                                                <th className="p-3 w-80">Catatan</th>
+                                                <th className="p-3 text-center">Pelanggaran</th>
+                                                <th className="p-3 w-72">Catatan</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {(!results || results.length === 0) ? (
-                                                <tr><td colSpan="6" className="p-6 text-center text-slate-400">Belum ada data nilai masuk.</td></tr>
+                                                <tr><td colSpan="7" className="p-6 text-center text-slate-400">Belum ada data nilai masuk.</td></tr>
                                             ) : (
                                                 results.map((r, idx) => (
-                                                    <ResultRow key={idx} r={r} onUpdateCatatan={onUpdateCatatan} />
+                                                    <ResultRow key={`${r.nisn}-${r.ujian}-${idx}`} r={r} onUpdateCatatan={onUpdateCatatan} />
                                                 ))
                                             )}
                                         </tbody>
