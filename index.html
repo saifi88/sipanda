@@ -99,8 +99,18 @@
             
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
+            // MEKANISME AUTO-RELOAD KETIKA ADA UPDATE VERSI
             useEffect(() => {
-                fetch(WEB_APP_URL + "?action=getInitData")
+                const APP_VERSION = "23.8.2026"; // Cukup ubah angka ini (misal ke 1.0.3) setiap kali Anda update index.html di GitHub
+                const savedVersion = localStorage.getItem("sipanda_version");
+                
+                if (savedVersion !== APP_VERSION) {
+                    localStorage.setItem("sipanda_version", APP_VERSION);
+                    window.location.reload(true); // Memaksa browser siswa memuat ulang halaman secara total
+                    return;
+                }
+
+                fetch(WEB_APP_URL + "?action=getInitData&v=" + APP_VERSION)
                     .then(res => res.json())
                     .then(data => {
                         setAppData({
@@ -273,9 +283,9 @@
             );
         }
 
-        function Login({ onLogin, students, settings }) {
+function Login({ onLogin, students, settings }) {
             const [nisn, setNisn] = useState('');
-            const [name, setName] = useState('');
+            const [matchedStudent, setMatchedStudent] = useState(null);
             const [error, setError] = useState('');
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -284,13 +294,32 @@
             const [adminUser, setAdminUser] = useState('');
             const [adminPass, setAdminPass] = useState('');
 
+            // Fungsi otomatis mendeteksi nama berdasarkan NISN yang diketik
+            const handleNisnChange = (e) => {
+                const val = e.target.value;
+                setNisn(val);
+                setError('');
+
+                if (val.trim() === '') {
+                    setMatchedStudent(null);
+                    return;
+                }
+
+                // Cari siswa di database berdasarkan NISN
+                const found = students.find(s => String(s.nisn).trim() === String(val).trim());
+                if (found) {
+                    setMatchedStudent(found);
+                } else {
+                    setMatchedStudent(null);
+                }
+            };
+
             const handleStudentLogin = (e) => {
                 e.preventDefault();
-                const student = students.find(s => s.nisn === nisn && s.name.toLowerCase() === name.toLowerCase());
-                if (student) {
-                    onLogin(student, 'student');
+                if (matchedStudent) {
+                    onLogin(matchedStudent, 'student');
                 } else {
-                    setError('NISN atau Nama tidak ditemukan di data sekolah.');
+                    setError('NISN tidak ditemukan di data sekolah. Periksa kembali.');
                 }
             };
 
@@ -301,7 +330,7 @@
                 const validPassHash = settings.adminPassHash || '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 
                 if (adminUser === validUser && inputPassHash === validPassHash) {
-                    onLogin({ name: 'Guru' }, 'admin');
+                    onLogin({ name: 'Guru / Admin' }, 'admin');
                 } else {
                     setError('Username atau Password salah.');
                 }
@@ -314,13 +343,13 @@
                         <h2 className="text-2xl font-black text-slate-800">SI-PANDA</h2>
                         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Sistem Informasi Penugasan Digital Anak</p>
                         <p className="text-sm text-slate-500 mt-2 px-4 leading-relaxed">
-                            Hai ! Masukkan NISN dan nama lengkap untuk mulai belajar materi & mengerjakan tugas.
+                            Hai ! Silakan masukkan NISN untuk belajar ringkasan materi & mengerjakan tugas rumah kalian.
                         </p>
                     </div>
 
                     <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100">
                         <h3 className="text-xl font-bold text-center mb-6 text-slate-800">
-                            {isAdminRoute ? 'Login Admin' : 'LOGIN'}
+                            {isAdminRoute ? 'Masuk' : 'Login'}
                         </h3>
 
                         {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-start gap-2"><Icon name="alert-circle" size={18} className="shrink-0 mt-0.5"/>{error}</div>}
@@ -329,13 +358,33 @@
                             <form onSubmit={handleStudentLogin} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">NISN</label>
-                                    <input type="text" required value={nisn} onChange={e => setNisn(e.target.value)} className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ketik NISN disini" />
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={nisn} 
+                                        onChange={handleNisnChange} 
+                                        className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-base" 
+                                        placeholder="Ketik NISN disini" 
+                                        autoFocus
+                                    />
                                 </div>
+
+                                {/* Kotak Informasi Nama Otomatis */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
-                                    <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Sesuai data sekolah" />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nama</label>
+                                    <div className={`w-full px-4 py-2.5 border rounded-lg text-sm font-bold flex items-center justify-between ${matchedStudent ? 'bg-green-50 border-green-200 text-green-800' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                                        <span>{matchedStudent ? matchedStudent.name : (nisn ? 'NISN tidak terdaftar' : 'Menunggu NISN diketik...')}</span>
+                                        {matchedStudent && <Icon name="check-circle" size={18} className="text-green-600 shrink-0" />}
+                                    </div>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors mt-2 shadow-sm">LANJUT</button>
+
+                                <button 
+                                    type="submit" 
+                                    disabled={!matchedStudent} 
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-semibold transition-colors mt-2 shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                    LANJUT
+                                </button>
                             </form>
                         ) : (
                             <form onSubmit={handleAdminLogin} className="space-y-4">
