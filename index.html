@@ -100,14 +100,13 @@
             
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
-            // MEKANISME AUTO-RELOAD KETIKA ADA UPDATE VERSI
             useEffect(() => {
-                const APP_VERSION = "26.08.2026"; // Diperbarui sesuai tanggal update
+                const APP_VERSION = "26.08.2026-v2"; 
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
                     localStorage.setItem("sipanda_version", APP_VERSION);
-                    window.location.reload(true); // Memaksa browser siswa memuat ulang halaman secara total
+                    window.location.reload(true);
                     return;
                 }
 
@@ -260,7 +259,16 @@
 
                     <main className={`flex-1 max-w-7xl mx-auto w-full ${view === 'exam' ? 'p-2 sm:p-6' : 'px-4 sm:px-6 lg:px-8 py-6'}`}>
                         {view === 'login' && <Login onLogin={handleLogin} students={appData.students} settings={appData.settings} />}
-                        {view === 'admin' && <AdminDashboard exams={appData.exams} results={appData.results} materiList={appData.materi} onToggleStatus={handleToggleExamStatus} onUpdateCatatan={handleUpdateCatatan} />}
+                        {view === 'admin' && (
+                            <AdminDashboard 
+                                exams={appData.exams} 
+                                results={appData.results} 
+                                students={appData.students} 
+                                materiList={appData.materi} 
+                                onToggleStatus={handleToggleExamStatus} 
+                                onUpdateCatatan={handleUpdateCatatan} 
+                            />
+                        )}
                         {view === 'student' && (
                             !selectedMapel ? (
                                 <StudentDashboard 
@@ -853,9 +861,18 @@
             );
         }
 
-        function AdminDashboard({ exams, results, materiList, onToggleStatus, onUpdateCatatan }) {
-            const [activeTab, setActiveTab] = useState('exams');
+        function AdminDashboard({ exams, results, students, materiList, onToggleStatus, onUpdateCatatan }) {
+            const [activeTab, setActiveTab] = useState('overview');
             const [loadingMateri, setLoadingMateri] = useState(false);
+
+            // State untuk Pantau Siswa
+            const [selectedFilterStatus, setSelectedFilterStatus] = useState('ALL'); 
+            const [selectedExamFilter, setSelectedExamFilter] = useState(exams.length > 0 ? exams[0].title : '');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedMapelFilter, setSelectedMapelFilter] = useState('ALL');
+
+            // State untuk Filter Kelola Materi
+            const [selectedMateriMapelFilter, setSelectedMateriMapelFilter] = useState('ALL');
 
             const handleAddMateri = async (e) => {
                 e.preventDefault();
@@ -879,7 +896,6 @@
                         })
                         .addMateriToSheet({ mapel, judul, pdf, gambar });
                 } catch (error) {
-                    // Fallback jika diuji di luar lingkungan google.script.run
                     fetch(WEB_APP_URL, {
                         method: 'POST',
                         mode: 'no-cors',
@@ -893,17 +909,214 @@
                 }
             };
 
+            // Logika Perhitungan & Filter Pantau Siswa
+            const totalStudents = students.length;
+            const examResults = (results || []).filter(r => r.ujian === selectedExamFilter);
+            const doneNisns = new Set(examResults.map(r => String(r.nisn)));
+            
+            const completedCount = doneNisns.size;
+            const pendingCount = Math.max(0, totalStudents - completedCount);
+
+            const studentStatusList = students.map(student => {
+                const isDone = doneNisns.has(String(student.nisn));
+                const res = examResults.find(r => String(r.nisn) === String(student.nisn));
+                return {
+                    ...student,
+                    isDone,
+                    nilai: isDone ? res.nilai : '-',
+                    waktu: isDone ? res.waktu : '-',
+                    pelanggaran: isDone ? res.pelanggaran : 0,
+                    catatan: isDone ? res.catatan : ''
+                };
+            });
+
+            const filteredStudents = studentStatusList.filter(s => {
+                if (selectedFilterStatus === 'DONE' && !s.isDone) return false;
+                if (selectedFilterStatus === 'PENDING' && s.isDone) return false;
+
+                if (searchQuery.trim() !== '') {
+                    const q = searchQuery.toLowerCase();
+                    const matchName = s.name.toLowerCase().includes(q);
+                    const matchNisn = String(s.nisn).toLowerCase().includes(q);
+                    if (!matchName && !matchNisn) return false;
+                }
+
+                return true;
+            });
+
+            // Logika Filter Kelola Materi
+            const filteredMateriList = (!materiList || materiList.length === 0) ? [] : materiList.filter(item => {
+                if (selectedMateriMapelFilter === 'ALL') return true;
+                return item.mapel === selectedMateriMapelFilter;
+            });
+
             return (
                 <div className="bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col md:flex-row min-h-[600px]">
                     <div className="w-full md:w-64 bg-slate-50 border-r p-4">
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Menu Guru</h2>
                         <nav className="space-y-1">
+                            <button onClick={() => setActiveTab('overview')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>📊 Pantau Siswa</button>
                             <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
                             <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
                             <button onClick={() => setActiveTab('materi')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'materi' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Materi</button>
                         </nav>
                     </div>
                     <div className="flex-1 p-6 overflow-y-auto">
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 p-4 rounded-2xl border">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Pantau Pengerjaan Tugas Siswa</h3>
+                                        <p className="text-xs text-slate-500">Pilih tugas/ujian, filter mapel, atau cari nama siswa untuk melihat statusnya.</p>
+                                    </div>
+                                    <div className="w-full sm:w-auto">
+                                        <select 
+                                            value={selectedExamFilter} 
+                                            onChange={(e) => setSelectedExamFilter(e.target.value)}
+                                            className="w-full sm:w-auto px-3.5 py-2 border rounded-xl text-xs font-bold bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        >
+                                            {exams.map((ex, idx) => (
+                                                <option key={idx} value={ex.title}>{ex.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Cari Nama / NISN Siswa</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Ketik nama atau NISN..." 
+                                            value={searchQuery || ''}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full px-3.5 py-2 border rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Filter Mata Pelajaran</label>
+                                        <select 
+                                            value={selectedMapelFilter || 'ALL'}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedMapelFilter(val);
+                                                if(val !== 'ALL') {
+                                                    const matchedExam = exams.find(ex => ex.title.toLowerCase().includes(val.toLowerCase()));
+                                                    if(matchedExam) setSelectedExamFilter(matchedExam.title);
+                                                }
+                                            }}
+                                            className="w-full px-3.5 py-2 border rounded-xl text-xs font-semibold bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        >
+                                            <option value="ALL">📁 Semua Mata Pelajaran</option>
+                                            {MAPEL_LIST.map((m, idx) => (
+                                                <option key={idx} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Card Statistik Interaktif (Klik card memfilter tabel) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div 
+                                        onClick={() => setSelectedFilterStatus('ALL')}
+                                        className={`bg-white p-5 rounded-2xl shadow-sm border cursor-pointer transition-all hover:border-blue-400 ${selectedFilterStatus === 'ALL' ? 'ring-2 ring-blue-500 bg-blue-50/20' : 'border-slate-100'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                                                <Icon name="file-text" size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-semibold uppercase">Total Siswa</p>
+                                                <h3 className="text-2xl font-black text-slate-800">{totalStudents}</h3>
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-blue-600 font-semibold mt-3">Klik untuk lihat semua →</p>
+                                    </div>
+
+                                    <div 
+                                        onClick={() => setSelectedFilterStatus('DONE')}
+                                        className={`bg-white p-5 rounded-2xl shadow-sm border cursor-pointer transition-all hover:border-green-400 ${selectedFilterStatus === 'DONE' ? 'ring-2 ring-green-500 bg-green-50/20' : 'border-slate-100'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center font-bold">
+                                                <Icon name="check-circle" size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-semibold uppercase">Sudah Mengerjakan</p>
+                                                <h3 className="text-2xl font-black text-green-600">{completedCount}</h3>
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-green-600 font-semibold mt-3">Klik untuk filter selesai →</p>
+                                    </div>
+
+                                    <div 
+                                        onClick={() => setSelectedFilterStatus('PENDING')}
+                                        className={`bg-white p-5 rounded-2xl shadow-sm border cursor-pointer transition-all hover:border-amber-400 ${selectedFilterStatus === 'PENDING' ? 'ring-2 ring-amber-500 bg-amber-50/20' : 'border-slate-100'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center font-bold">
+                                                <Icon name="clock" size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 font-semibold uppercase">Belum Mengerjakan</p>
+                                                <h3 className="text-2xl font-black text-amber-600">{pendingCount}</h3>
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-amber-600 font-semibold mt-3">Klik untuk filter belum →</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="p-4 bg-slate-50 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                        <h4 className="font-bold text-sm text-slate-700">
+                                            Daftar Siswa ({selectedFilterStatus === 'ALL' ? 'Semua' : selectedFilterStatus === 'DONE' ? 'Sudah Selesai' : 'Belum Selesai'}) - <span className="text-blue-600">{selectedExamFilter}</span>
+                                        </h4>
+                                        {(selectedFilterStatus !== 'ALL' || searchQuery || (selectedMapelFilter && selectedMapelFilter !== 'ALL')) && (
+                                            <button 
+                                                onClick={() => { setSelectedFilterStatus('ALL'); setSearchQuery(''); setSelectedMapelFilter('ALL'); }} 
+                                                className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
+                                            >
+                                                Reset Semua Filter
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50/50 border-b text-xs text-slate-500">
+                                                <tr>
+                                                    <th className="p-3">NISN</th>
+                                                    <th className="p-3">Nama Siswa</th>
+                                                    <th className="p-3 text-center">Status Pengerjaan</th>
+                                                    <th className="p-3 text-center">Nilai</th>
+                                                    <th className="p-3">Waktu Pengumpulan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredStudents.length === 0 ? (
+                                                    <tr><td colSpan="5" className="p-6 text-center text-slate-400">Tidak ada data siswa yang cocok dengan pencarian/filter ini.</td></tr>
+                                                ) : (
+                                                    filteredStudents.map((s, idx) => (
+                                                        <tr key={idx} className="border-b hover:bg-slate-50/50">
+                                                            <td className="p-3 font-mono text-xs">{s.nisn}</td>
+                                                            <td className="p-3 font-bold text-slate-800">{s.name}</td>
+                                                            <td className="p-3 text-center">
+                                                                {s.isDone ? (
+                                                                    <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full inline-block">Sudah Selesai</span>
+                                                                ) : (
+                                                                    <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full inline-block">Belum Mengerjakan</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-3 text-center font-black text-blue-600">{s.nilai}</td>
+                                                            <td className="p-3 text-xs text-slate-500">{s.waktu}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {activeTab === 'exams' && (
                             <div>
                                 <h3 className="text-lg font-bold mb-2">Kelola Status</h3>
@@ -970,7 +1183,7 @@
                                             <select 
                                                 name="mapel" 
                                                 required 
-                                                className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                                className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white cursor-pointer"
                                             >
                                                 <option value="">-- Pilih Mata Pelajaran --</option>
                                                 {MAPEL_LIST.map((m, idx) => (
@@ -1018,17 +1231,32 @@
                                     </form>
                                 </div>
 
-                                {/* Daftar Materi Aktif */}
+                                {/* Daftar Materi Aktif dengan Fitur Filter Mapel */}
                                 <div>
-                                    <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                        <Icon name="list" size={18} className="text-blue-600"/> 
-                                        Daftar Materi Aktif di Spreadsheet ({materiList ? materiList.length : 0})
-                                    </h3>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+                                        <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                            <Icon name="list" size={18} className="text-blue-600"/> 
+                                            Daftar Materi Aktif di Spreadsheet ({filteredMateriList.length})
+                                        </h3>
+                                        <div className="w-full sm:w-auto">
+                                            <select 
+                                                value={selectedMateriMapelFilter} 
+                                                onChange={(e) => setSelectedMateriMapelFilter(e.target.value)}
+                                                className="w-full sm:w-auto px-3 py-1.5 border rounded-xl text-xs font-semibold bg-white outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 cursor-pointer"
+                                            >
+                                                <option value="ALL">📁 Semua Mata Pelajaran</option>
+                                                {MAPEL_LIST.map((m, idx) => (
+                                                    <option key={idx} value={m}>Filter: {m}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-3">
-                                        {(!materiList || materiList.length === 0) ? (
-                                            <p className="text-sm text-slate-400 italic p-4 bg-slate-50 rounded-xl border">Belum ada materi tersimpan.</p>
+                                        {filteredMateriList.length === 0 ? (
+                                            <p className="text-sm text-slate-400 italic p-4 bg-slate-50 rounded-xl border text-center">Belum ada materi untuk kategori ini.</p>
                                         ) : (
-                                            materiList.map((item, idx) => (
+                                            filteredMateriList.map((item, idx) => (
                                                 <div key={idx} className="p-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
                                                     <div className="flex items-center gap-3">
                                                         <img 
