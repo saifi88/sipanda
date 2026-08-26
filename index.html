@@ -52,7 +52,8 @@
                 'save': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
                 'download': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
                 'edit': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>,
-                'x': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                'x': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
+                'list': <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
             };
             return icons[name] || null;
         };
@@ -101,7 +102,7 @@
 
             // MEKANISME AUTO-RELOAD KETIKA ADA UPDATE VERSI
             useEffect(() => {
-                const APP_VERSION = "23.8.2026"; // Cukup ubah angka ini (misal ke 1.0.3) setiap kali Anda update index.html di GitHub
+                const APP_VERSION = "26.08.2026"; // Diperbarui sesuai tanggal update
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -259,7 +260,7 @@
 
                     <main className={`flex-1 max-w-7xl mx-auto w-full ${view === 'exam' ? 'p-2 sm:p-6' : 'px-4 sm:px-6 lg:px-8 py-6'}`}>
                         {view === 'login' && <Login onLogin={handleLogin} students={appData.students} settings={appData.settings} />}
-                        {view === 'admin' && <AdminDashboard exams={appData.exams} results={appData.results} onToggleStatus={handleToggleExamStatus} onUpdateCatatan={handleUpdateCatatan} />}
+                        {view === 'admin' && <AdminDashboard exams={appData.exams} results={appData.results} materiList={appData.materi} onToggleStatus={handleToggleExamStatus} onUpdateCatatan={handleUpdateCatatan} />}
                         {view === 'student' && (
                             !selectedMapel ? (
                                 <StudentDashboard 
@@ -283,7 +284,7 @@
             );
         }
 
-function Login({ onLogin, students, settings }) {
+        function Login({ onLogin, students, settings }) {
             const [nisn, setNisn] = useState('');
             const [matchedStudent, setMatchedStudent] = useState(null);
             const [error, setError] = useState('');
@@ -294,7 +295,6 @@ function Login({ onLogin, students, settings }) {
             const [adminUser, setAdminUser] = useState('');
             const [adminPass, setAdminPass] = useState('');
 
-            // Fungsi otomatis mendeteksi nama berdasarkan NISN yang diketik
             const handleNisnChange = (e) => {
                 const val = e.target.value;
                 setNisn(val);
@@ -305,7 +305,6 @@ function Login({ onLogin, students, settings }) {
                     return;
                 }
 
-                // Cari siswa di database berdasarkan NISN
                 const found = students.find(s => String(s.nisn).trim() === String(val).trim());
                 if (found) {
                     setMatchedStudent(found);
@@ -369,7 +368,6 @@ function Login({ onLogin, students, settings }) {
                                     />
                                 </div>
 
-                                {/* Kotak Informasi Nama Otomatis */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Nama</label>
                                     <div className={`w-full px-4 py-2.5 border rounded-lg text-sm font-bold flex items-center justify-between ${matchedStudent ? 'bg-green-50 border-green-200 text-green-800' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
@@ -467,7 +465,7 @@ function Login({ onLogin, students, settings }) {
                                 <button 
                                     key={idx}
                                     onClick={() => onSelectMapel(mapel)}
-                                    className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-md transition-all text-left flex flex-col justify-between group"
+                                    className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer"
                                 >
                                     <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                         <Icon name="book-open" size={20} />
@@ -524,7 +522,7 @@ function Login({ onLogin, students, settings }) {
                                                         Tugas Selesai
                                                     </button>
                                                 ) : (
-                                                    <button onClick={() => onStartExam(exam)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+                                                    <button onClick={() => onStartExam(exam)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer">
                                                         Mulai Kerjakan
                                                     </button>
                                                 )}
@@ -544,7 +542,7 @@ function Login({ onLogin, students, settings }) {
                 <div className="space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border">
                         <div className="flex items-center gap-3">
-                            <button onClick={onBack} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors font-bold text-sm flex items-center gap-1">
+                            <button onClick={onBack} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors font-bold text-sm flex items-center gap-1 cursor-pointer">
                                 <Icon name="chevron-left" size={18} /> Kembali
                             </button>
                             <div>
@@ -683,7 +681,7 @@ function Login({ onLogin, students, settings }) {
                                 <h3 className="text-2xl font-black text-slate-800 mb-2 uppercase">Peringatan Keras!</h3>
                                 <p className="text-slate-600 text-sm mb-4">Dilarang meninggalkan halaman ujian.</p>
                                 <div className="bg-red-50 text-red-800 p-3 rounded-lg mb-6 font-bold">Pelanggaranmu: {cheatWarningCount} Kali</div>
-                                <button onClick={() => setShowCheatModal(false)} className="w-full py-3.5 rounded-xl font-bold bg-red-600 text-white shadow-lg">KEMBALI</button>
+                                <button onClick={() => setShowCheatModal(false)} className="w-full py-3.5 rounded-xl font-bold bg-red-600 text-white shadow-lg cursor-pointer">KEMBALI</button>
                             </div>
                         </div>
                     )}
@@ -693,8 +691,8 @@ function Login({ onLogin, students, settings }) {
                                 <h3 className="text-xl font-bold mb-2">Sudah Selesai ?</h3>
                                 <p className="text-slate-500 text-sm mb-6">Yakin ingin keluar ?</p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 font-semibold">Batal</button>
-                                    <button onClick={submitExam} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-semibold">Ya, Selesai</button>
+                                    <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 font-semibold cursor-pointer">Batal</button>
+                                    <button onClick={submitExam} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-semibold cursor-pointer">Ya, Selesai</button>
                                 </div>
                             </div>
                         </div>
@@ -717,11 +715,11 @@ function Login({ onLogin, students, settings }) {
                             </div>
                         </div>
                         <div className="border-t pt-4 flex justify-between">
-                            <button onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))} disabled={currentQIndex === 0} className="px-4 py-2 text-sm font-semibold border rounded-lg bg-white disabled:opacity-50"><Icon name="chevron-left" size={16}/> Back</button>
+                            <button onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))} disabled={currentQIndex === 0} className="px-4 py-2 text-sm font-semibold border rounded-lg bg-white disabled:opacity-50 cursor-pointer"><Icon name="chevron-left" size={16}/> Back</button>
                             {currentQIndex === shuffledQuestions.length - 1 ? (
-                                <button onClick={() => setShowConfirmModal(true)} className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Selesai</button>
+                                <button onClick={() => setShowConfirmModal(true)} className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-bold cursor-pointer">Selesai</button>
                             ) : (
-                                <button onClick={() => setCurrentQIndex(prev => Math.min(shuffledQuestions.length - 1, prev + 1))} className="px-4 py-2 text-white bg-blue-600 rounded-lg text-sm font-semibold">Next <Icon name="chevron-right" size={16}/></button>
+                                <button onClick={() => setCurrentQIndex(prev => Math.min(shuffledQuestions.length - 1, prev + 1))} className="px-4 py-2 text-white bg-blue-600 rounded-lg text-sm font-semibold cursor-pointer">Next <Icon name="chevron-right" size={16}/></button>
                             )}
                         </div>
                     </div>
@@ -737,7 +735,7 @@ function Login({ onLogin, students, settings }) {
                                 {shuffledQuestions.map((q, idx) => {
                                     const isAnswered = answers[q.id] !== undefined;
                                     return (
-                                        <button key={q.id} onClick={() => setCurrentQIndex(idx)} className={`w-10 h-10 rounded-lg text-sm font-bold border-2 ${currentQIndex === idx ? 'ring-2 ring-blue-300' : ''} ${isAnswered ? 'bg-green-500 text-white border-green-600' : 'bg-red-500 text-white border-red-600'}`}>{idx + 1}</button>
+                                        <button key={q.id} onClick={() => setCurrentQIndex(idx)} className={`w-10 h-10 rounded-lg text-sm font-bold border-2 cursor-pointer ${currentQIndex === idx ? 'ring-2 ring-blue-300' : ''} ${isAnswered ? 'bg-green-500 text-white border-green-600' : 'bg-red-500 text-white border-red-600'}`}>{idx + 1}</button>
                                     );
                                 })}
                             </div>
@@ -747,7 +745,6 @@ function Login({ onLogin, students, settings }) {
             );
         }
 
-        // Komponen Modal Pop-up Catatan Guru
         function NoteModal({ r, onClose, onSave }) {
             const [text, setText] = useState(r.catatan || "");
 
@@ -764,12 +761,11 @@ function Login({ onLogin, students, settings }) {
                             <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                                 <Icon name="message-square" size={20} className="text-blue-600" /> Beri Catatan
                             </h3>
-                            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
                                 <Icon name="x" size={20} />
                             </button>
                         </div>
 
-                        {/* Identitas Siswa yang dikomentari agar guru yakin */}
                         <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 mb-4 text-xs space-y-1.5">
                             <div className="flex justify-between">
                                 <span className="text-slate-500">Nama Siswa:</span>
@@ -803,10 +799,10 @@ function Login({ onLogin, students, settings }) {
                             </div>
 
                             <div className="flex gap-2 pt-2">
-                                <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors">
+                                <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer">
                                     Batal
                                 </button>
-                                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
                                     <Icon name="save" size={14} /> Simpan
                                 </button>
                             </div>
@@ -816,7 +812,6 @@ function Login({ onLogin, students, settings }) {
             );
         }
 
-        // Komponen Baris Tabel Rekap
         function ResultRow({ r, onUpdateCatatan }) {
             const [showModal, setShowModal] = useState(false);
 
@@ -838,7 +833,7 @@ function Login({ onLogin, students, settings }) {
                                 <span className="text-xs text-slate-600 italic truncate max-w-[150px] sm:max-w-xs">{r.catatan || '(Belum ada catatan)'}</span>
                                 <button 
                                     onClick={() => setShowModal(true)} 
-                                    className="ml-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0 border border-blue-200"
+                                    className="ml-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0 border border-blue-200 cursor-pointer"
                                     title="Beri/Ubah Catatan"
                                 >
                                     <Icon name="edit" size={14} /> <span>Catatan</span>
@@ -858,15 +853,54 @@ function Login({ onLogin, students, settings }) {
             );
         }
 
-        function AdminDashboard({ exams, results, onToggleStatus, onUpdateCatatan }) {
+        function AdminDashboard({ exams, results, materiList, onToggleStatus, onUpdateCatatan }) {
             const [activeTab, setActiveTab] = useState('exams');
+            const [loadingMateri, setLoadingMateri] = useState(false);
+
+            const handleAddMateri = async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const mapel = form.mapel.value;
+                const judul = form.judul.value;
+                const pdf = form.pdf.value;
+                const gambar = form.gambar.value;
+
+                setLoadingMateri(true);
+                try {
+                    await google.script.run
+                        .withSuccessHandler(() => {
+                            alert("Materi berhasil ditambahkan!");
+                            form.reset();
+                            window.location.reload();
+                        })
+                        .withFailureHandler((err) => {
+                            alert("Gagal menyimpan materi: " + err.message);
+                            setLoadingMateri(false);
+                        })
+                        .addMateriToSheet({ mapel, judul, pdf, gambar });
+                } catch (error) {
+                    // Fallback jika diuji di luar lingkungan google.script.run
+                    fetch(WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: "addMateri", mapel, judul, pdf, gambar })
+                    });
+                    alert("Permintaan simpan materi dikirim!");
+                    setLoadingMateri(false);
+                    form.reset();
+                    window.location.reload();
+                }
+            };
+
             return (
                 <div className="bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col md:flex-row min-h-[600px]">
                     <div className="w-full md:w-64 bg-slate-50 border-r p-4">
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Menu Guru</h2>
                         <nav className="space-y-1">
-                            <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
-                            <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
+                            <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
+                            <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
+                            <button onClick={() => setActiveTab('materi')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'materi' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Materi</button>
                         </nav>
                     </div>
                     <div className="flex-1 p-6 overflow-y-auto">
@@ -883,7 +917,7 @@ function Login({ onLogin, students, settings }) {
                                             </div>
                                             <button 
                                                 onClick={() => onToggleStatus(e.id)}
-                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${e.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-300' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-300'}`}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${e.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-300' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-300'}`}
                                             >
                                                 {e.isActive ? '🟢 AKTIF (Klik untuk Matikan)' : '⚪ NON-AKTIF (Klik untuk Aktifkan)'}
                                             </button>
@@ -919,6 +953,104 @@ function Login({ onLogin, students, settings }) {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'materi' && (
+                            <div className="space-y-6">
+                                {/* Form Tambah Materi */}
+                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                                    <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Icon name="book-open" size={18} className="text-blue-600"/> 
+                                        Tambah Materi Pembelajaran Baru
+                                    </h3>
+                                    <form onSubmit={handleAddMateri} className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1">Mata Pelajaran (Mapel)</label>
+                                            <select 
+                                                name="mapel" 
+                                                required 
+                                                className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                            >
+                                                <option value="">-- Pilih Mata Pelajaran --</option>
+                                                {MAPEL_LIST.map((m, idx) => (
+                                                    <option key={idx} value={m}>{m}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1">Judul Materi</label>
+                                            <input 
+                                                type="text" 
+                                                name="judul" 
+                                                required 
+                                                placeholder="Contoh: Pecahan Desimal" 
+                                                className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Link File PDF</label>
+                                                <input 
+                                                    type="url" 
+                                                    name="pdf" 
+                                                    placeholder="https://drive.google.com/..." 
+                                                    className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono bg-white"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-700 mb-1">Link Gambar Ilustrasi</label>
+                                                <input 
+                                                    type="url" 
+                                                    name="gambar" 
+                                                    placeholder="https://i.ibb.co/..." 
+                                                    className="w-full px-3.5 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono bg-white"
+                                                />
+                                            </div>
+                                        </div>
+                                        <button 
+                                            type="submit" 
+                                            disabled={loadingMateri}
+                                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                                        >
+                                            {loadingMateri ? 'Menyimpan...' : 'Simpan & Terbitkan Materi'}
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* Daftar Materi Aktif */}
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                        <Icon name="list" size={18} className="text-blue-600"/> 
+                                        Daftar Materi Aktif di Spreadsheet ({materiList ? materiList.length : 0})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {(!materiList || materiList.length === 0) ? (
+                                            <p className="text-sm text-slate-400 italic p-4 bg-slate-50 rounded-xl border">Belum ada materi tersimpan.</p>
+                                        ) : (
+                                            materiList.map((item, idx) => (
+                                                <div key={idx} className="p-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <img 
+                                                            src={item.gambar || 'https://via.placeholder.com/80?text=Img'} 
+                                                            alt={item.judul} 
+                                                            className="w-12 h-14 rounded-lg object-cover border shrink-0 bg-slate-50"
+                                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/80?text=Img'; }}
+                                                        />
+                                                        <div>
+                                                            <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md mb-1">{item.mapel}</span>
+                                                            <h4 className="font-bold text-slate-800 text-sm">{item.judul}</h4>
+                                                        </div>
+                                                    </div>
+                                                    {item.pdf && (
+                                                        <a href={item.pdf} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors">
+                                                            Buka PDF
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
