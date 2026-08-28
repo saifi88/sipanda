@@ -97,11 +97,12 @@
             const [activeExamData, setActiveExamData] = useState(null);
             const [loading, setLoading] = useState(true);
             const [selectedMapel, setSelectedMapel] = useState(null);
+            const [selectedTaskFilter, setSelectedTaskFilter] = useState(null); 
             
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
             useEffect(() => {
-                const APP_VERSION = "26.08.2026-v2"; 
+                const APP_VERSION = "28.08.2026-v1";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -138,6 +139,7 @@
                 setView('login');
                 setActiveExamData(null);
                 setSelectedMapel(null);
+                setSelectedTaskFilter(null);
             };
 
             const startExam = (exam) => {
@@ -224,7 +226,7 @@
                     <div className="min-h-screen flex items-center justify-center bg-slate-100">
                         <div className="text-center">
                             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-slate-600 font-medium">Menghubungkan ke server kelas 6</p>
+                            <p className="text-slate-600 font-medium">Loading ...</p>
                         </div>
                     </div>
                 );
@@ -270,19 +272,29 @@
                             />
                         )}
                         {view === 'student' && (
-                            !selectedMapel ? (
+                            selectedMapel ? (
+                                <DaftarMateriView 
+                                    mapel={selectedMapel} 
+                                    materiList={appData.materi.filter(m => m.mapel === selectedMapel)} 
+                                    onBack={() => setSelectedMapel(null)} 
+                                />
+                            ) : selectedTaskFilter ? (
+                                <DaftarTugasFilteredView 
+                                    filterType={selectedTaskFilter}
+                                    exams={appData.exams}
+                                    results={appData.results}
+                                    currentUser={currentUser}
+                                    onStartExam={startExam}
+                                    onBack={() => setSelectedTaskFilter(null)}
+                                />
+                            ) : (
                                 <StudentDashboard 
                                     exams={appData.exams} 
                                     results={appData.results} 
                                     currentUser={currentUser} 
                                     onStartExam={startExam} 
                                     onSelectMapel={setSelectedMapel} 
-                                />
-                            ) : (
-                                <DaftarMateriView 
-                                    mapel={selectedMapel} 
-                                    materiList={appData.materi.filter(m => m.mapel === selectedMapel)} 
-                                    onBack={() => setSelectedMapel(null)} 
+                                    onSelectTaskFilter={setSelectedTaskFilter}
                                 />
                             )
                         )}
@@ -410,136 +422,233 @@
             );
         }
 
-        function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel }) {
+function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel, onSelectTaskFilter }) {
             const activeExams = exams.filter(e => e.isActive);
             const totalExams = activeExams.length;
             const studentResults = (results || []).filter(r => r.nisn === currentUser.nisn);
+            
             const completedCount = activeExams.filter(exam => 
                 studentResults.some(r => r.ujian === exam.title)
             ).length;
             const pendingCount = totalExams - completedCount;
 
+            // Hitung persentase progress pengerjaan tugas
+            const progressPercentage = totalExams > 0 ? Math.round((completedCount / totalExams) * 100) : 0;
+
             return (
                 <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-xl font-bold">Hallo, {currentUser.name}!</h2>
-                            <p className="text-slate-500 text-sm mt-1">Lihat ringkasan materi pelajaran dan daftar tugas rumahmu.</p>
+                    {/* Kartu Sambutan & Progress Bar */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Hallo, {currentUser.name}!</h2>
+                                <p className="text-slate-500 text-sm mt-0.5">Lihat ringkasan materi pelajaran dan daftar tugas rumahmu.</p>
+                            </div>
+                            <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-xs font-bold border border-blue-100 shrink-0">
+                                Selesai: {completedCount} dari {totalExams} Tugas ({progressPercentage}%)
+                            </div>
+                        </div>
+
+                        {/* Bilah Kemajuan / Progress Bar */}
+                        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200">
+                            <div 
+                                className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500 shadow-sm"
+                                style={{ width: `${progressPercentage}%` }}
+                            ></div>
                         </div>
                     </div>
 
+                    {/* Card Statistik dengan Warna Pastel Lembut */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
-                                <Icon name="file-text" size={24} />
+                        <div 
+                            onClick={() => onSelectTaskFilter('ALL')}
+                            className="bg-gradient-to-br from-blue-200 to-indigo-50/40 p-5 rounded-2xl shadow-sm border border-blue-500 cursor-pointer transition-all hover:shadow-md group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-blue-500 text-white rounded-xl flex items-center justify-center font-bold shadow-sm">
+                                    <Icon name="file-text" size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-blue-600 font-bold uppercase tracking-wide">Total Tugas dari Pak Guru</p>
+                                    <h3 className="text-2xl font-black text-slate-800">{totalExams}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-slate-500 font-semibold uppercase">Total Tugas</p>
-                                <h3 className="text-2xl font-black text-slate-800">{totalExams}</h3>
-                            </div>
+                            <p className="text-[11px] text-blue-600 font-semibold mt-3">Cek semua tugas →</p>
                         </div>
 
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center font-bold">
-                                <Icon name="check-circle" size={24} />
+                        <div 
+                            onClick={() => onSelectTaskFilter('DONE')}
+                            className="bg-gradient-to-br from-emerald-200 to-teal-50/40 p-5 rounded-2xl shadow-sm border border-emerald-500 cursor-pointer transition-all hover:shadow-md group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center font-bold shadow-sm">
+                                    <Icon name="check-circle" size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">Sudah Kamu Kerjakan</p>
+                                    <h3 className="text-2xl font-black text-emerald-700">{completedCount}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-slate-500 font-semibold uppercase">Sudah Dikerjakan</p>
-                                <h3 className="text-2xl font-black text-green-600">{completedCount}</h3>
-                            </div>
+                            <p className="text-[11px] text-emerald-600 font-semibold mt-3">Cek tugas selesai →</p>
                         </div>
 
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center font-bold">
-                                <Icon name="clock" size={24} />
+                        <div 
+                            onClick={() => onSelectTaskFilter('PENDING')}
+                            className="bg-gradient-to-br from-amber-200 to-orange-50/40 p-5 rounded-2xl shadow-sm border border-amber-500 cursor-pointer transition-all hover:shadow-md group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center font-bold shadow-sm">
+                                    <Icon name="clock" size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-amber-600 font-bold uppercase tracking-wide">Belum Kamu Kerjakan</p>
+                                    <h3 className="text-2xl font-black text-amber-700">{pendingCount}</h3>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-slate-500 font-semibold uppercase">Belum Dikerjakan</p>
-                                <h3 className="text-2xl font-black text-amber-600">{pendingCount}</h3>
-                            </div>
+                            <p className="text-[11px] text-amber-600 font-semibold mt-3">Cek belum dikerjakan →</p>
                         </div>
                     </div>
 
                     <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-md">
                         <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Pusat Belajar</span>
-                        <h3 className="text-lg font-bold">Unduh & Pelajari Ringkasan Materi</h3>
-                        <p className="text-indigo-100 text-sm mt-1">Siswa disarankan membaca atau mengunduh ringkasan materi sebelum mulai mengerjakan tugas.</p>
+                        <h3 className="text-lg font-bold">Unduh & Pelajari Materi Pelajaran di Bawah Ini</h3>
+                        <p className="text-indigo-100 text-sm mt-1">Sebaiknya unduh ringkasan materi kemudian pelajari terlebih dahulu sebelum mulai mengerjakan tugas.</p>
                     </div>
 
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-3">Daftar Mata Pelajaran</h3>
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Pilih Mata Pelajaran yang Akan Dipelajari</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {MAPEL_LIST.map((mapel, idx) => (
-                                <button 
-                                    key={idx}
-                                    onClick={() => onSelectMapel(mapel)}
-                                    className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-blue-500 hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer"
-                                >
-                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                        <Icon name="book-open" size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors">{mapel}</p>
-                                        <p className="text-xs text-slate-400 mt-1">Lihat Materi</p>
-                                    </div>
-                                </button>
-                            ))}
+                            {MAPEL_LIST.map((mapel, idx) => {
+                                const colors = [
+                                    { bg: "bg-blue-50/60 hover:bg-blue-100/60", border: "border-blue-200", iconBg: "bg-blue-500 text-white", text: "text-blue-900" },
+                                    { bg: "bg-purple-50/60 hover:bg-purple-100/60", border: "border-purple-200", iconBg: "bg-purple-500 text-white", text: "text-purple-900" },
+                                    { bg: "bg-emerald-50/60 hover:bg-emerald-100/60", border: "border-emerald-200", iconBg: "bg-emerald-500 text-white", text: "text-emerald-900" },
+                                    { bg: "bg-amber-50/60 hover:bg-amber-100/60", border: "border-amber-200", iconBg: "bg-amber-500 text-white", text: "text-amber-900" },
+                                    { bg: "bg-rose-50/60 hover:bg-rose-100/60", border: "border-rose-200", iconBg: "bg-rose-500 text-white", text: "text-rose-900" },
+                                    { bg: "bg-cyan-50/60 hover:bg-cyan-100/60", border: "border-cyan-200", iconBg: "bg-cyan-500 text-white", text: "text-cyan-900" },
+                                    { bg: "bg-indigo-50/60 hover:bg-indigo-100/60", border: "border-indigo-200", iconBg: "bg-indigo-500 text-white", text: "text-indigo-900" },
+                                    { bg: "bg-teal-50/60 hover:bg-teal-100/60", border: "border-teal-200", iconBg: "bg-teal-500 text-white", text: "text-teal-900" },
+                                ];
+                                const theme = colors[idx % colors.length];
+
+                                return (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => onSelectMapel(mapel)}
+                                        className={`${theme.bg} p-5 rounded-2xl shadow-sm border ${theme.border} hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer`}
+                                    >
+                                        <div className={`w-10 h-10 ${theme.iconBg} rounded-xl flex items-center justify-center font-bold mb-3 shadow-sm transition-transform group-hover:scale-105`}>
+                                            <Icon name="book-open" size={20} />
+                                        </div>
+                                        <div>
+                                            <p className={`font-bold text-sm ${theme.text} transition-colors`}>{mapel}</p>
+                                            <p className="text-xs text-slate-500 mt-1">Lihat Materi →</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function DaftarTugasFilteredView({ filterType, exams, results, currentUser, onStartExam, onBack }) {
+            const activeExams = exams.filter(e => e.isActive);
+            const studentResults = (results || []).filter(r => r.nisn === currentUser.nisn);
+            
+            const sortedActiveExams = [...activeExams].reverse();
+
+            const completedExamsList = sortedActiveExams.filter(exam => 
+                studentResults.some(r => r.ujian === exam.title)
+            );
+            const pendingExamsList = sortedActiveExams.filter(exam => 
+                !studentResults.some(r => r.ujian === exam.title)
+            );
+
+            let displayedExams = sortedActiveExams;
+            let titleText = "Semua Tugas";
+            if (filterType === 'DONE') {
+                displayedExams = completedExamsList;
+                titleText = "Tugas yang Sudah Dikerjakan";
+            } else if (filterType === 'PENDING') {
+                displayedExams = pendingExamsList;
+                titleText = "Tugas Belum Dikerjakan";
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border">
+                        <div className="flex items-center gap-3">
+                            <button onClick={onBack} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors font-bold text-sm flex items-center gap-1 cursor-pointer">
+                                <Icon name="chevron-left" size={18} /> Kembali
+                            </button>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">{titleText}</h2>
+                                <p className="text-xs text-slate-500">Total: {displayedExams.length} tugas</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-3">Daftar Tugas</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {activeExams.length === 0 ? (
-                                <div className="col-span-full text-center py-10 bg-white rounded-2xl border border-slate-100"><p className="text-slate-500">Belum ada tugas saat ini.</p></div>
-                            ) : (
-                                activeExams.map(exam => {
-                                    const studentResult = studentResults.find(r => r.ujian === exam.title);
-                                    const isDone = !!studentResult;
-                                    const teacherNote = studentResult ? studentResult.catatan : "";
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {displayedExams.length === 0 ? (
+                            <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <p className="text-slate-400 font-medium">Tidak ada tugas dalam kategori ini.</p>
+                            </div>
+                        ) : (
+                            displayedExams.map((exam, index) => {
+                                const studentResult = studentResults.find(r => r.ujian === exam.title);
+                                const isDone = !!studentResult;
+                                const teacherNote = studentResult ? studentResult.catatan : "";
+                                const showNewBadge = index < 4;
 
-                                    return (
-                                        <div key={exam.id} className={`bg-white p-5 rounded-2xl shadow-sm border ${isDone ? 'border-green-200 bg-green-50/20' : 'border-slate-100'} flex flex-col justify-between`}>
-                                            <div>
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h3 className="font-bold text-lg text-slate-800 leading-tight">{exam.title}</h3>
-                                                    {isDone && (
-                                                        <span className="flex items-center gap-1 text-green-700 bg-green-100 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                                                            <Icon name="check-circle" size={14} /> Selesai ({studentResult.nilai})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-4 mt-2 text-sm text-slate-500 mb-4">
-                                                    <span className="flex items-center gap-1"><Icon name="clock" size={14} /> {exam.duration} Menit</span>
-                                                </div>
+                                return (
+                                    <div key={exam.id || index} className={`bg-white p-5 rounded-2xl shadow-sm border relative overflow-hidden ${isDone ? 'border-green-200 bg-green-50/20' : 'border-slate-100'} flex flex-col justify-between`}>
+                                        {showNewBadge && (
+                                            <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm uppercase tracking-wider animate-pulse">
+                                                BARU
+                                            </div>
+                                        )}
 
-                                                {isDone && teacherNote && (
-                                                    <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-start gap-2">
-                                                        <Icon name="message-square" size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                                                        <div>
-                                                            <strong className="block font-bold text-blue-700 mb-0.5">Catatan:</strong>
-                                                            <span className="italic">{teacherNote}</span>
-                                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-start mb-2 pr-8">
+                                                <h3 className="font-bold text-lg text-slate-800 leading-tight">{exam.title}</h3>
+                                                {isDone && (
+                                                    <span className="flex items-center gap-1 text-green-700 bg-green-100 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                                                        <Icon name="check-circle" size={14} /> Selesai ({studentResult.nilai})
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-4 mt-2 text-sm text-slate-500 mb-4">
+                                                <span className="flex items-center gap-1"><Icon name="clock" size={14} /> {exam.duration} Menit</span>
+                                            </div>
+
+                                            {isDone && teacherNote && (
+                                                <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-start gap-2">
+                                                    <Icon name="message-square" size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <strong className="block font-bold text-blue-700 mb-0.5">Catatan:</strong>
+                                                        <span className="italic">{teacherNote}</span>
                                                     </div>
-                                                )}
-                                            </div>
-
-                                            <div className="mt-5 pt-3 border-t border-slate-100">
-                                                {isDone ? (
-                                                    <button disabled className="w-full py-2.5 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed">
-                                                        Tugas Selesai
-                                                    </button>
-                                                ) : (
-                                                    <button onClick={() => onStartExam(exam)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer">
-                                                        Mulai Kerjakan
-                                                    </button>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    );
-                                })
-                            )}
-                        </div>
+
+                                        <div className="mt-5 pt-3 border-t border-slate-100">
+                                            {isDone ? (
+                                                <button disabled className="w-full py-2.5 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed">
+                                                    Tugas Selesai
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => onStartExam(exam)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer">
+                                                    Mulai Kerjakan
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
             );
@@ -865,13 +974,11 @@
             const [activeTab, setActiveTab] = useState('overview');
             const [loadingMateri, setLoadingMateri] = useState(false);
 
-            // State untuk Pantau Siswa
             const [selectedFilterStatus, setSelectedFilterStatus] = useState('ALL'); 
             const [selectedExamFilter, setSelectedExamFilter] = useState(exams.length > 0 ? exams[0].title : '');
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedMapelFilter, setSelectedMapelFilter] = useState('ALL');
 
-            // State untuk Filter Kelola Materi
             const [selectedMateriMapelFilter, setSelectedMateriMapelFilter] = useState('ALL');
 
             const handleAddMateri = async (e) => {
@@ -909,7 +1016,6 @@
                 }
             };
 
-            // Logika Perhitungan & Filter Pantau Siswa
             const totalStudents = students.length;
             const examResults = (results || []).filter(r => r.ujian === selectedExamFilter);
             const doneNisns = new Set(examResults.map(r => String(r.nisn)));
@@ -944,7 +1050,6 @@
                 return true;
             });
 
-            // Logika Filter Kelola Materi
             const filteredMateriList = (!materiList || materiList.length === 0) ? [] : materiList.filter(item => {
                 if (selectedMateriMapelFilter === 'ALL') return true;
                 return item.mapel === selectedMateriMapelFilter;
@@ -1015,7 +1120,6 @@
                                     </div>
                                 </div>
 
-                                {/* Card Statistik Interaktif (Klik card memfilter tabel) */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div 
                                         onClick={() => setSelectedFilterStatus('ALL')}
@@ -1171,7 +1275,6 @@
                         )}
                         {activeTab === 'materi' && (
                             <div className="space-y-6">
-                                {/* Form Tambah Materi */}
                                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                                     <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
                                         <Icon name="book-open" size={18} className="text-blue-600"/> 
@@ -1231,7 +1334,6 @@
                                     </form>
                                 </div>
 
-                                {/* Daftar Materi Aktif dengan Fitur Filter Mapel */}
                                 <div>
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
                                         <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
