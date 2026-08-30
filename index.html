@@ -1066,7 +1066,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
             // Simpan soal ke Spreadsheet sebagai Tugas baru
             const handlePublishAiExam = async () => {
                 if (!examTitle.trim()) {
-                    alert("Topik/Judul khusus wajib diisi (contoh: Tata Surya).");
+                    alert("Topik wajib diisi (contoh: Tata Surya).");
                     return;
                 }
                 if (aiGeneratedQuestions.length === 0) {
@@ -1114,9 +1114,13 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify(newExamData)
                     });
-                    alert("Tugas otomatis berhasil diterbitkan ke siswa dengan ID: " + examIdGenerated);
+                    alert("Tugas berhasil diterbitkan ke siswa dengan ID: " + examIdGenerated);
                     setIsPublishing(false);
-                    window.location.reload();
+                    // Kembali ke dashboard
+                    setAiGeneratedQuestions([]); 
+                    setAiFiles([]);             
+                    setExamTitle('');           
+                    setActiveTab('exams');
                 } catch (err) {
                     alert("Gagal menerbitkan tugas: " + err.message);
                     setIsPublishing(false);
@@ -1142,7 +1146,6 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                     });
                     alert("Materi berhasil ditambahkan!");
                         form.reset();
-                        window.location.reload();
                     } catch (error) {
                         alert("Gagal menyimpan materi: " + error.message);
                     } finally {
