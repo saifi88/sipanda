@@ -102,7 +102,7 @@
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
             useEffect(() => {
-                const APP_VERSION = "28.08.2026-v1";
+                const APP_VERSION = "30.08.2026-v1";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -362,7 +362,7 @@
                         <h2 className="text-2xl font-black text-slate-800">SI-PANDA</h2>
                         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Sistem Informasi Penugasan Digital Anak</p>
                         <p className="text-sm text-slate-500 mt-2 px-4 leading-relaxed">
-                            Hai ! Silakan masukkan NISN untuk belajar ringkasan materi & mengerjakan tugas rumah kalian.
+                            Hai ! Masukkan NISN kalian untuk belajar ringkasan materi & mengerjakan tugas yang tersedia.
                         </p>
                     </div>
 
@@ -516,7 +516,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                     </div>
 
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-3">Pilih Mata Pelajaran yang Akan Dipelajari</h3>
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Pilih mapel yang akan kamu pelajari</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {MAPEL_LIST.map((mapel, idx) => {
                                 const colors = [
@@ -974,12 +974,154 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
             const [activeTab, setActiveTab] = useState('overview');
             const [loadingMateri, setLoadingMateri] = useState(false);
 
+            // State khusus untuk fitur AI Generator Soal
+            const [aiMapel, setAiMapel] = useState(MAPEL_LIST[0]);
+            const [aiFiles, setAiFiles] = useState([]);
+            const [aiLoading, setAiLoading] = useState(false);
+            const [aiGeneratedQuestions, setAiGeneratedQuestions] = useState([]);
+            const [examTitle, setExamTitle] = useState('');
+            const [examDuration, setExamDuration] = useState('30');
+            const [isPublishing, setIsPublishing] = useState(false);
+
             const [selectedFilterStatus, setSelectedFilterStatus] = useState('ALL'); 
             const [selectedExamFilter, setSelectedExamFilter] = useState(exams.length > 0 ? exams[0].title : '');
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedMapelFilter, setSelectedMapelFilter] = useState('ALL');
 
             const [selectedMateriMapelFilter, setSelectedMateriMapelFilter] = useState('ALL');
+
+            // Handler unggah file multi-file untuk AI
+            const handleFileChange = (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                let loadedFiles = [];
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (uploadEvent) => {
+                        const base64String = uploadEvent.target.result.split(',')[1];
+                        loadedFiles.push({
+                            name: file.name,
+                            mimeType: file.type,
+                            base64: base64String
+                        });
+                        if (loadedFiles.length === files.length) {
+                            setAiFiles(prev => [...prev, ...loadedFiles]);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            const removeAiFile = (index) => {
+                setAiFiles(prev => prev.filter((_, i) => i !== index));
+            };
+
+            // Proses kirim ke backend Apps Script (Gemini AI)
+            const handleGenerateAI = async () => {
+                if (aiFiles.length === 0) {
+                    alert("Silakan unggah minimal 1 file materi (JPG/PNG/PDF) terlebih dahulu.");
+                    return;
+                }
+
+                setAiLoading(true);
+                setAiGeneratedQuestions([]);
+
+                try {
+                    if (typeof google !== 'undefined' && google.script && google.script.run) {
+                        google.script.run
+                            .withSuccessHandler((result) => {
+                                setAiGeneratedQuestions(result);
+                                setAiLoading(false);
+                                alert("Berhasil! AI telah membuat " + result.length + " soal. Silakan tinjau di bawah.");
+                            })
+                            .withFailureHandler((err) => {
+                                alert("Gagal memproses AI: " + err.message);
+                                setAiLoading(false);
+                            })
+                            .generateQuestionsFromImages(aiFiles, aiMapel);
+                    } else {
+                        alert("Fitur ini aktif otomatis saat berjalan di dalam Google Web App Apps Script.");
+                        setAiLoading(false);
+                    }
+                } catch (error) {
+                    alert("Terjadi kesalahan: " + error.message);
+                    setAiLoading(false);
+                }
+            };
+
+            // Handler edit pertanyaan hasil AI sebelum disimpan
+            const handleQuestionChange = (index, field, value) => {
+                const updated = [...aiGeneratedQuestions];
+                updated[index][field] = value;
+                setAiGeneratedQuestions(updated);
+            };
+
+            const handleOptionChange = (qIndex, optIndex, value) => {
+                const updated = [...aiGeneratedQuestions];
+                updated[qIndex].options[optIndex] = value;
+                setAiGeneratedQuestions(updated);
+            };
+
+            // Simpan soal ke Spreadsheet sebagai Tugas baru
+            const handlePublishAiExam = async () => {
+                if (!examTitle.trim()) {
+                    alert("Topik/Judul khusus wajib diisi (contoh: Tata Surya).");
+                    return;
+                }
+                if (aiGeneratedQuestions.length === 0) {
+                    alert("Belum ada soal yang tersedia.");
+                    return;
+                }
+
+                setIsPublishing(true);
+
+                // Aturan 1: exam_id -> kode mapel_DDMM (contoh: IPAS_3008)
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const mapelCode = aiMapel.replace(/[^a-zA-Z0-9]/g, "").toUpperCase(); // Ambil huruf/angka bersih untuk kode
+                const examIdGenerated = `${mapelCode}_${dd}${mm}`;
+
+                // Aturan 2: title -> awalan mapel dan topik (contoh: PR IPAS - Tata Surya)
+                const finalTitle = `PR ${aiMapel} - ${examTitle}`;
+
+                // Aturan 3: duration -> 1 soal 1 menit (jika 30 soal, maka 30 menit)
+                const totalSoal = aiGeneratedQuestions.length;
+                const calculatedDuration = totalSoal; 
+
+                // Aturan 4 & 5: isActive TRUE, q_id diurutkan dari 1 s.d. jumlah soal (misal 30)
+                const formattedQuestions = aiGeneratedQuestions.slice(0, 30).map((q, index) => ({
+                    q_id: index + 1, // Aturan 5: selalu dari 1 s.d. 30 (atau sejumlah soal)
+                    text: q.text,
+                    options: q.options,
+                    answer: q.answer
+                }));
+
+                const newExamData = {
+                    action: "saveNewExam",
+                    id: examIdGenerated,       // Aturan 1
+                    title: finalTitle,         // Aturan 2
+                    duration: calculatedDuration, // Aturan 3
+                    isActive: true,            // Aturan 4
+                    questions: formattedQuestions
+                };
+
+                try {
+                    await fetch(WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newExamData)
+                    });
+                    alert("Tugas otomatis berhasil diterbitkan ke siswa dengan ID: " + examIdGenerated);
+                    setIsPublishing(false);
+                    window.location.reload();
+                } catch (err) {
+                    alert("Gagal menerbitkan tugas: " + err.message);
+                    setIsPublishing(false);
+                }
+            };
 
             const handleAddMateri = async (e) => {
                 e.preventDefault();
@@ -1061,6 +1203,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Menu Guru</h2>
                         <nav className="space-y-1">
                             <button onClick={() => setActiveTab('overview')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>📊 Pantau Siswa</button>
+                            <button onClick={() => setActiveTab('ai-generator')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'ai-generator' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>🤖 Buat Soal AI</button>
                             <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
                             <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
                             <button onClick={() => setActiveTab('materi')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'materi' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Materi</button>
@@ -1221,6 +1364,166 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                                 </div>
                             </div>
                         )}
+
+                        {/* TAB BARU: BUAT SOAL DENGAN AI */}
+                        {activeTab === 'ai-generator' && (
+                            <div className="space-y-6">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-5 rounded-2xl">
+                                    <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+                                        🤖 Generator Soal Otomatis Berbasis AI
+                                    </h3>
+                                    <p className="text-xs text-blue-700 mt-1">
+                                        Unggah beberapa foto materi pelajaran (JPG/PNG). AI akan otomatis membacanya dan merumuskan soal pilihan ganda berkualitas tinggi untuk siswa Anda.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Mata Pelajaran</label>
+                                        <select 
+                                            value={aiMapel} 
+                                            onChange={(e) => setAiMapel(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 border rounded-xl text-sm font-semibold bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                        >
+                                            {MAPEL_LIST.map((m, idx) => (
+                                                <option key={idx} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Unggah File Materi (Bisa Banyak Sekaligus)</label>
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            accept="image/jpeg,image/png,application/pdf" 
+                                            onChange={handleFileChange}
+                                            className="w-full px-3 py-2 border rounded-xl text-xs bg-white file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Daftar Pratinjau File yang Diunggah */}
+                                {aiFiles.length > 0 && (
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-slate-600">File Terpilih ({aiFiles.length}):</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {aiFiles.map((file, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border text-xs font-medium">
+                                                    <span className="truncate max-w-[180px]">{file.name}</span>
+                                                    <button onClick={() => removeAiFile(idx)} className="text-red-500 hover:text-red-700 font-bold cursor-pointer">×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button 
+                                    onClick={handleGenerateAI}
+                                    disabled={aiLoading || aiFiles.length === 0}
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {aiLoading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>AI Sedang Menganalisis Materi & Membuat Soal...</span>
+                                        </>
+                                    ) : (
+                                        <>✨ Proses & Buat Soal dengan AI</>
+                                    )}
+                                </button>
+
+                                {/* Area Review Hasil Soal AI */}
+                                {aiGeneratedQuestions.length > 0 && (
+                                    <div className="mt-8 space-y-6 border-t pt-6">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border space-y-4">
+                                            <h4 className="font-bold text-base text-slate-800">Pengaturan Tugas</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1">Judul Tugas / Ujian</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={examTitle} 
+                                                        onChange={(e) => setExamTitle(e.target.value)} 
+                                                        placeholder="Contoh: Latihan Bab 1 Pecahan" 
+                                                        className="w-full px-3.5 py-2 border rounded-xl text-sm bg-white"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1">Durasi (Menit)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        value={examDuration} 
+                                                        onChange={(e) => setExamDuration(e.target.value)} 
+                                                        className="w-full px-3.5 py-2 border rounded-xl text-sm bg-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <h4 className="font-bold text-base text-slate-800">Review Hasil Soal AI ({aiGeneratedQuestions.length} Soal)</h4>
+                                        <p className="text-xs text-slate-500">Anda dapat mengedit teks soal atau pilihan jawaban jika ada yang perlu disesuaikan sebelum diterbitkan.</p>
+
+                                        <div className="space-y-4">
+                                            {aiGeneratedQuestions.map((q, qIdx) => (
+                                                <div key={qIdx} className="bg-white p-5 rounded-2xl border shadow-sm space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg">Soal #{qIdx + 1}</span>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] font-bold text-slate-500 mb-1">Pertanyaan</label>
+                                                        <textarea 
+                                                            rows="2" 
+                                                            value={q.text} 
+                                                            onChange={(e) => handleQuestionChange(qIdx, 'text', e.target.value)}
+                                                            className="w-full px-3 py-2 border rounded-xl text-sm font-medium bg-slate-50 focus:bg-white"
+                                                        ></textarea>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {q.options.map((opt, optIdx) => (
+                                                            <div key={optIdx} className="flex items-center gap-2">
+                                                                <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${q.answer === optIdx ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                                                                    {['A', 'B', 'C', 'D'][optIdx]}
+                                                                </span>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={opt} 
+                                                                    onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                                                                    className="w-full px-3 py-1.5 border rounded-xl text-xs bg-slate-50 focus:bg-white"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-xl border border-green-200 flex items-center justify-between">
+                                                        <span>Kunci Jawaban Benar: <strong>Pilihan {['A', 'B', 'C', 'D'][q.answer]}</strong></span>
+                                                        <select 
+                                                            value={q.answer} 
+                                                            onChange={(e) => handleQuestionChange(qIdx, 'answer', Number(e.target.value))}
+                                                            className="px-2 py-1 border rounded-lg text-xs font-bold bg-white cursor-pointer"
+                                                        >
+                                                            <option value={0}>A</option>
+                                                            <option value={1}>B</option>
+                                                            <option value={2}>C</option>
+                                                            <option value={3}>D</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <button 
+                                            onClick={handlePublishAiExam}
+                                            disabled={isPublishing}
+                                            className="w-full py-3.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
+                                        >
+                                            {isPublishing ? 'Menerbitkan Tugas...' : '🚀 ACC & Terbitkan Tugas ke Siswa'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {activeTab === 'exams' && (
                             <div>
                                 <h3 className="text-lg font-bold mb-2">Kelola Status</h3>
