@@ -1017,7 +1017,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                 setAiFiles(prev => prev.filter((_, i) => i !== index));
             };
 
-            // Proses kirim ke backend Apps Script (Gemini AI)
+            // Proses kirim ke backend Apps Script (Gemini AI) via Web App URL
             const handleGenerateAI = async () => {
                 if (aiFiles.length === 0) {
                     alert("Silakan unggah minimal 1 file materi (JPG/PNG/PDF) terlebih dahulu.");
@@ -1028,21 +1028,27 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                 setAiGeneratedQuestions([]);
 
                 try {
-                    if (typeof google !== 'undefined' && google.script && google.script.run) {
-                        google.script.run
-                            .withSuccessHandler((result) => {
-                                setAiGeneratedQuestions(result);
-                                setAiLoading(false);
-                                alert("Berhasil! AI telah membuat " + result.length + " soal. Silakan tinjau di bawah.");
-                            })
-                            .withFailureHandler((err) => {
-                                alert("Gagal memproses AI: " + err.message);
-                                setAiLoading(false);
-                            })
-                            .generateQuestionsFromImages(aiFiles, aiMapel);
-                    } else {
-                        alert("Fitur ini aktif otomatis saat berjalan di dalam Google Web App Apps Script.");
+                    // Menggunakan fetch POST ke WEB_APP_URL agar bisa diakses dari GitHub Pages
+                    const response = await fetch(WEB_APP_URL, {
+                        method: 'POST',
+                        // Catatan: Google Apps Script Web App dengan mode 'cors' atau 'no-cors'. 
+                        // Karena kita butuh menerima hasil JSON balik dari AI, kita gunakan mode default / 'cors' 
+                        // dan pastikan Web App Apps Script mengizinkannya.
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "generateAIQuestions",
+                            files: aiFiles,
+                            mapel: aiMapel
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.status === "success" && result.questions) {
+                        setAiGeneratedQuestions(result.questions);
                         setAiLoading(false);
+                        alert("Berhasil! AI telah membuat " + result.questions.length + " soal. Silakan tinjau di bawah.");
+                    } else {
+                        throw new Error(result.message || "Gagal memproses AI dari server.");
                     }
                 } catch (error) {
                     alert("Terjadi kesalahan: " + error.message);
