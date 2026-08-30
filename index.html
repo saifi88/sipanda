@@ -174,8 +174,7 @@
 
                 fetch(WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: "saveResult", ...newResult })
                 });
 
@@ -190,8 +189,7 @@
                             const newStatus = !ex.isActive;
                             fetch(WEB_APP_URL, {
                                 method: 'POST',
-                                mode: 'no-cors',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                                 body: JSON.stringify({ action: "updateExamStatus", examId: examId, isActive: newStatus })
                             });
                             return { ...ex, isActive: newStatus };
@@ -215,8 +213,7 @@
 
                 fetch(WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: "updateCatatan", nisn: nisn, ujian: ujian, catatan: newCatatan })
                 });
             };
@@ -1031,10 +1028,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                     // Menggunakan fetch POST ke WEB_APP_URL agar bisa diakses dari GitHub Pages
                     const response = await fetch(WEB_APP_URL, {
                         method: 'POST',
-                        // Catatan: Google Apps Script Web App dengan mode 'cors' atau 'no-cors'. 
-                        // Karena kita butuh menerima hasil JSON balik dari AI, kita gunakan mode default / 'cors' 
-                        // dan pastikan Web App Apps Script mengizinkannya.
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
                             action: "generateAIQuestions",
                             files: aiFiles,
@@ -1117,7 +1111,7 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                     await fetch(WEB_APP_URL, {
                         method: 'POST',
                         mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify(newExamData)
                     });
                     alert("Tugas otomatis berhasil diterbitkan ke siswa dengan ID: " + examIdGenerated);
@@ -1132,37 +1126,29 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
             const handleAddMateri = async (e) => {
                 e.preventDefault();
                 const form = e.target;
-                const mapel = form.mapel.value;
-                const judul = form.judul.value;
-                const pdf = form.pdf.value;
-                const gambar = form.gambar.value;
-
                 setLoadingMateri(true);
+                
                 try {
-                    await google.script.run
-                        .withSuccessHandler(() => {
-                            alert("Materi berhasil ditambahkan!");
-                            form.reset();
-                            window.location.reload();
-                        })
-                        .withFailureHandler((err) => {
-                            alert("Gagal menyimpan materi: " + err.message);
-                            setLoadingMateri(false);
-                        })
-                        .addMateriToSheet({ mapel, judul, pdf, gambar });
-                } catch (error) {
-                    fetch(WEB_APP_URL, {
+                await fetch(WEB_APP_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: "addMateri", mapel, judul, pdf, gambar })
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ 
+                            action: "addMateri", 
+                            mapel: form.mapel.value, 
+                            judul: form.judul.value, 
+                            pdf: form.pdf.value, 
+                            gambar: form.gambar.value 
+                        })
                     });
-                    alert("Permintaan simpan materi dikirim!");
-                    setLoadingMateri(false);
-                    form.reset();
-                    window.location.reload();
-                }
-            };
+                    alert("Materi berhasil ditambahkan!");
+                        form.reset();
+                        window.location.reload();
+                    } catch (error) {
+                        alert("Gagal menyimpan materi: " + error.message);
+                    } finally {
+                        setLoadingMateri(false);
+                    }
+                };
 
             const totalStudents = students.length;
             const examResults = (results || []).filter(r => r.ujian === selectedExamFilter);
