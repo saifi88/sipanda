@@ -201,7 +201,7 @@
                             ...prev,
                             results: prev.results.map(r => 
                                 (String(r.nisn) === String(currentUser.nisn) && String(r.ujian) === String(examTitle))
-                                    ? { ...r, nilai: response.score }
+                                    ? { ...r, nilai: response.score, catatan: response.catatan || "" }
                                     : r
                             )
                         }));
@@ -464,7 +464,7 @@
             );
         }
 
-function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel, onSelectTaskFilter }) {
+        function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel, onSelectTaskFilter }) {
             const activeExams = exams.filter(e => e.isActive);
             const totalExams = activeExams.length;
             const studentResults = (results || []).filter(r => r.nisn === currentUser.nisn);
@@ -511,11 +511,11 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                                     <Icon name="file-text" size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-blue-600 font-bold uppercase tracking-wide">Total Tugas dari Pak Guru</p>
+                                    <p className="text-xs text-blue-600 font-bold uppercase tracking-wide">Total Tugas Rumah</p>
                                     <h3 className="text-2xl font-black text-slate-800">{totalExams}</h3>
                                 </div>
                             </div>
-                            <p className="text-[11px] text-blue-600 font-semibold mt-3">Cek semua tugas →</p>
+                            <p className="text-[11px] text-blue-600 font-semibold mt-3">Lihat →</p>
                         </div>
 
                         <div 
@@ -527,11 +527,11 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                                     <Icon name="check-circle" size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">Sudah Kamu Kerjakan</p>
+                                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">Sudah dikerjakan</p>
                                     <h3 className="text-2xl font-black text-emerald-700">{completedCount}</h3>
                                 </div>
                             </div>
-                            <p className="text-[11px] text-emerald-600 font-semibold mt-3">Cek tugas selesai →</p>
+                            <p className="text-[11px] text-emerald-600 font-semibold mt-3">Lihat →</p>
                         </div>
 
                         <div 
@@ -543,11 +543,11 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                                     <Icon name="clock" size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-amber-600 font-bold uppercase tracking-wide">Belum Kamu Kerjakan</p>
+                                    <p className="text-xs text-amber-600 font-bold uppercase tracking-wide">Belum dikerjakan</p>
                                     <h3 className="text-2xl font-black text-amber-700">{pendingCount}</h3>
                                 </div>
                             </div>
-                            <p className="text-[11px] text-amber-600 font-semibold mt-3">Cek belum dikerjakan →</p>
+                            <p className="text-[11px] text-amber-600 font-semibold mt-3">Lihat →</p>
                         </div>
                     </div>
 
@@ -596,6 +596,9 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
         }
 
         function DaftarTugasFilteredView({ filterType, exams, results, currentUser, onStartExam, onBack }) {
+            // State lokal untuk mengatur pop-up ulasan AI
+            const [selectedCatatan, setSelectedCatatan] = React.useState(null);
+
             const activeExams = exams.filter(e => e.isActive);
             const studentResults = (results || []).filter(r => r.nisn === currentUser.nisn);
             
@@ -632,7 +635,6 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                         </div>
                     </div>
 
-                    {/* --- SISIPKAN PERULANGAN MAP DAN BADGE JENIS SOAL DI BAWAH INI --- */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {displayedExams.map((exam, index) => {
                             // Cek apakah tugas ini memiliki soal essay
@@ -666,9 +668,22 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                                         </div>
                                     </div>
 
+                                    {/* Bagian Status Ujian: Selesai atau Belum */}
                                     {isDone ? (
-                                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-semibold text-center">
-                                            ✓ Selesai ({res.nilai})
+                                        <div className="space-y-2">
+                                            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-semibold text-center">
+                                                ✓ Selesai ({res.nilai})
+                                            </div>
+
+                                            {/* Tombol Lihat Ulasan */}
+                                            {res && res.catatan && (
+                                                <button 
+                                                    onClick={() => setSelectedCatatan(res.catatan)}
+                                                    className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 border border-indigo-100 cursor-pointer"
+                                                >
+                                                    <span>💬 Catatan Guru</span>
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <button 
@@ -682,6 +697,40 @@ function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMa
                             );
                         })}
                     </div>
+
+                    {/* --- MODAL / POP-UP ULASAN --- */}
+                    {selectedCatatan && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                        Ulasan & Masukan
+                                    </h3>
+                                    <button 
+                                        onClick={() => setSelectedCatatan(null)}
+                                        className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+                                
+                                <div className="max-h-60 overflow-y-auto mb-6 pr-2">
+                                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        {selectedCatatan}
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button 
+                                        onClick={() => setSelectedCatatan(null)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors shadow-sm"
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
