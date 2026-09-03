@@ -367,7 +367,7 @@
                             judul: form.judul.value, 
                             pdf: form.pdf.value, 
                             gambar: form.gambar.value,
-                            linkedExamId: form.linkedExamId.value
+                            linkedExamId: form.linkedExamId.value // <-- Menangkap ID ujian terpilih dari dropdown
                         })
                     });
                     alert("Materi berhasil ditambahkan!"); 
@@ -691,7 +691,7 @@
                                                 {(!results || results.length === 0) ? (
                                                     <tr><td colSpan="7" className="p-6 text-center text-gray-400">Belum ada data masuk.</td></tr>
                                                 ) : (
-                                                    results.map((r, idx) => (
+                                                    results.slice().reverse().map((r, idx) => (
                                                         <ResultRow key={`${r.nisn}-${r.ujian}-${idx}`} r={r} onUpdateCatatan={onUpdateCatatan} />
                                                     ))
                                                 )}
@@ -727,7 +727,20 @@
                                                         <label className="block text-xs font-semibold text-gray-600 mb-1">Link Sampul (Gambar)</label>
                                                         <input type="url" name="gambar" placeholder="https://..." className="w-full p-2 border border-gray-300 text-sm outline-none font-mono text-blue-600" />
                                                     </div>
+
+                                                    {/* TAMBAHAN DROPDOWN PILIHAN UJIAN TERKAIT DI SINI */}
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Hubungkan dengan Tugas Ujian (Opsional)</label>
+                                                        <select name="linkedExamId" className="w-full p-2 border border-gray-300 text-sm outline-none cursor-pointer bg-white">
+                                                            <option value="">-- Pilih Tugas Ujian Terkait --</option>
+                                                            {exams.map((ex, idx) => (
+                                                                <option key={idx} value={ex.id}>{ex.title} (ID: {ex.id})</option>
+                                                            ))}
+                                                        </select>
+                                                        <p className="text-[10px] text-slate-500 mt-1">Siswa akan melihat tombol "Kerjakan Soal" yang langsung mengarah ke ujian ini setelah membuka materi.</p>
+                                                    </div>
                                                 </div>
+
                                                 <button type="submit" disabled={loadingMateri} className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold shadow-sm cursor-pointer transition-colors">
                                                     {loadingMateri ? 'Menyimpan...' : 'Simpan & Publikasikan Materi'}
                                                 </button>
