@@ -925,11 +925,13 @@
                         </h1>
                         <div className="flex items-center gap-3">
                             <div className="text-right hidden sm:block">
-                                <p className="text-[10px] text-slate-300">Selamat datang</p>
-                                <p className="text-xs font-semibold">{currentUser.nama}</p>
+                                <p className="text-[10px] text-blue-200 uppercase">Selamat datang</p>
+                                <p className="text-xs font-bold">{currentUser.nama}</p>
                             </div>
-                            <div className="bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-600">
-                                🎓 SISWA
+                            <div className="bg-blue-800/80 px-3 py-1.5 rounded-lg border border-blue-700 text-xs font-bold flex items-center gap-1.5">
+                                <span>👤</span>
+                                {/* Teks "SISWA" bisa dihilangkan atau diganti ikon saja agar di HP super rapi */}
+                                <span className="hidden sm:inline">SISWA</span>
                             </div>
                         </div>
                     </header>
