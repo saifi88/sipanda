@@ -354,15 +354,30 @@
             };
 
             const handleAddMateri = async (e) => {
-                e.preventDefault(); const form = e.target; setLoadingMateri(true);
+                e.preventDefault(); 
+                const form = e.target; 
+                setLoadingMateri(true);
                 try {
                     await fetch(WEB_APP_URL, {
-                        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ action: "addMateri", mapel: form.mapel.value, judul: form.judul.value, pdf: form.pdf.value, gambar: form.gambar.value })
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ 
+                            action: "addMateri", 
+                            mapel: form.mapel.value, 
+                            judul: form.judul.value, 
+                            pdf: form.pdf.value, 
+                            gambar: form.gambar.value,
+                            linkedExamId: form.linkedExamId.value
+                        })
                     });
-                    alert("Materi berhasil ditambahkan!"); form.reset();
-                } catch (error) { alert("Gagal menyimpan materi: " + error.message); } 
-                finally { setLoadingMateri(false); }
+                    alert("Materi berhasil ditambahkan!"); 
+                    form.reset();
+                } catch (error) { 
+                    alert("Gagal menyimpan materi: " + error.message); 
+                } 
+                finally { 
+                    setLoadingMateri(false); 
+                }
             };
 
             const totalStudents = students.length;

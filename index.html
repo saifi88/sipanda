@@ -102,7 +102,7 @@
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
             useEffect(() => {
-                const APP_VERSION = "03.09.2026-v1";
+                const APP_VERSION = "03.09.2026-v2";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -157,7 +157,7 @@
                 const examTitle = appData.exams.find(e => e.id === examId)?.title || 'Ujian';
                 const timeStr = new Date().toLocaleString("id-ID");
                 
-                // 1. UPDATE STATE LOKAL SECARA LANGSUNG (AGAR STATUS LANGSUNG BERUBAH SELESAI)
+                // 1. UPDATE STATE LOKAL SECARA LANGSUNG
                 setAppData(prev => ({
                     ...prev,
                     results: [...prev.results, {
@@ -165,7 +165,7 @@
                         nisn: currentUser.nisn,
                         nama: currentUser.name,
                         ujian: examTitle,
-                        nilai: score, // Nilai sementara
+                        nilai: score,
                         catatan: "",
                         pelanggaran: cheatCount || 0
                     }]
@@ -185,7 +185,7 @@
                     pgCount: pgCount || 0
                 };
 
-                // 2. KIRIM KE BACKEND GOOGLE SHEETS & AI DI LATAR BELAKANG
+                // 2. KIRIM KE BACKEND GOOGLE SHEETS
                 fetch(WEB_APP_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -194,8 +194,6 @@
                 .then(res => res.json())
                 .then(response => {
                     console.log("Respon Server:", response);
-                    
-                    // Jika server mengembalikan nilai AI (misal 84), perbarui nilainya di state
                     if (response.score !== undefined) {
                         setAppData(prev => ({
                             ...prev,
@@ -211,7 +209,7 @@
                     console.error("Gagal mengirim:", err);
                 });
 
-                // 3. LANGSUNG KEMBALI KE DASHBOARD SISWA
+                // 3. KEMBALI KE DASHBOARD SISWA
                 setView('student');
                 setActiveExamData(null);
             };
@@ -283,7 +281,7 @@
                                             <p className="text-sm font-semibold">{currentUser.name || 'Administrator'}</p>
                                             <p className="text-xs text-slate-500">{currentUser.role === 'admin' ? 'Guru' : `NISN: ${currentUser.nisn}`}</p>
                                         </div>
-                                        <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Keluar">
+                                        <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors cursor-pointer" title="Keluar">
                                             <Icon name="log-out" size={20} />
                                         </button>
                                     </div>
@@ -310,6 +308,14 @@
                                     mapel={selectedMapel} 
                                     materiList={appData.materi.filter(m => m.mapel === selectedMapel)} 
                                     onBack={() => setSelectedMapel(null)} 
+                                    onStartExam={(examId) => {
+                                        const targetExam = appData.exams.find(ex => ex.id === examId);
+                                        if (targetExam) {
+                                            startExam(targetExam);
+                                        } else {
+                                            alert("Maaf, soal ujian terkait tidak ditemukan atau belum dipublikasikan.");
+                                        }
+                                    }}
                                 />
                             ) : selectedTaskFilter ? (
                                 <DaftarTugasFilteredView 
@@ -735,7 +741,7 @@
             );
         }
 
-        function DaftarMateriView({ mapel, materiList, onBack }) {
+        function DaftarMateriView({ mapel, materiList, onBack, onStartExam }) {
             return (
                 <div className="space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border">
@@ -745,7 +751,7 @@
                             </button>
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800">{mapel}</h2>
-                                <p className="text-xs text-slate-500">Daftar ringkasan materi</p>
+                                <p className="text-xs text-slate-500">Daftar ringkasan materi dan latihan soal</p>
                             </div>
                         </div>
                     </div>
@@ -766,15 +772,31 @@
                                     />
                                     <div className="flex-1 min-w-0">
                                         <h4 className="font-bold text-base text-slate-800 truncate mb-1">{item.judul}</h4>
-                                        <p className="text-xs text-slate-500 mb-4 line-clamp-2">Klik tombol di bawah untuk melihat atau mengunduh materi ini.</p>
-                                        <a 
-                                            href={item.pdf} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
-                                        >
-                                            <Icon name="download" size={14} /> Unduh / Lihat
-                                        </a>
+                                        <p className="text-xs text-slate-500 mb-3 line-clamp-2">Baca materi PDF lalu kerjakan soal latihannya.</p>
+                                        
+                                        {/* Bagian Tombol Aksi (Unduh PDF & Kerjakan Soal) */}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {item.pdf && (
+                                                <a 
+                                                    href={item.pdf} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="inline-flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                                                >
+                                                    <Icon name="file-text" size={14} /> Baca Materi
+                                                </a>
+                                            )}
+
+                                            {/* Tombol Pintasan ke Soal Ujian (Hanya muncul jika di admin dihubungkan ke examId) */}
+                                            {item.linkedExamId && onStartExam && (
+                                                <button 
+                                                    onClick={() => onStartExam(item.linkedExamId)} 
+                                                    className="inline-flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm cursor-pointer"
+                                                >
+                                                    ✍️ Kerjakan Soal
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))
