@@ -102,7 +102,7 @@
             const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
 
             useEffect(() => {
-                const APP_VERSION = "02.09.2026-v1";
+                const APP_VERSION = "03.09.2026-v1";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -791,6 +791,8 @@
             const [isFinished, setIsFinished] = useState(false);
             const [shuffledQuestions, setShuffledQuestions] = useState([]);
             
+            // State tambahan untuk Ragu-ragu & Modal Peringatan Custom
+            const [raguRaguSet, setRaguRaguSet] = useState(new Set());
             const [showConfirmModal, setShowConfirmModal] = useState(false);
             const [showTimeUpModal, setShowTimeUpModal] = useState(false);
             const [showCheatModal, setShowCheatModal] = useState(false);
@@ -806,10 +808,13 @@
                     setTimeLeft(parsed.timeLeft || exam.duration * 60);
                     setShuffledQuestions(parsed.shuffledQuestions || exam.questions);
                     setCheatWarningCount(parsed.cheatWarningCount || 0);
+                    if (parsed.raguRagu) {
+                        setRaguRaguSet(new Set(parsed.raguRagu));
+                    }
                 } else {
                     const randomlyShuffled = shuffleArray(exam.questions);
                     setShuffledQuestions(randomlyShuffled);
-                    localStorage.setItem(sessionKey, JSON.stringify({ answers: {}, timeLeft: exam.duration * 60, shuffledQuestions: randomlyShuffled, cheatWarningCount: 0 }));
+                    localStorage.setItem(sessionKey, JSON.stringify({ answers: {}, timeLeft: exam.duration * 60, shuffledQuestions: randomlyShuffled, cheatWarningCount: 0, raguRagu: [] }));
                 }
             }, []);
 
@@ -831,7 +836,7 @@
                     if (document.hidden) {
                         setCheatWarningCount(prev => {
                             const newCount = prev + 1;
-                            localStorage.setItem(sessionKey, JSON.stringify({ answers, timeLeft, shuffledQuestions, cheatWarningCount: newCount }));
+                            localStorage.setItem(sessionKey, JSON.stringify({ answers, timeLeft, shuffledQuestions, cheatWarningCount: newCount, raguRagu: Array.from(raguRaguSet) }));
                             return newCount;
                         });
                         setShowCheatModal(true);
@@ -847,15 +852,29 @@
                     document.removeEventListener('paste', preventDefault);
                     document.removeEventListener('visibilitychange', handleVisibility);
                 };
-            }, [isFinished, answers, timeLeft, shuffledQuestions]);
+            }, [isFinished, answers, timeLeft, shuffledQuestions, raguRaguSet]);
 
             const handleAnswer = (qId, value) => {
                 const newAns = { ...answers, [qId]: value };
                 setAnswers(newAns);
-                localStorage.setItem(sessionKey, JSON.stringify({ answers: newAns, timeLeft, shuffledQuestions, cheatWarningCount }));
+                localStorage.setItem(sessionKey, JSON.stringify({ answers: newAns, timeLeft, shuffledQuestions, cheatWarningCount, raguRagu: Array.from(raguRaguSet) }));
             };
 
-            // 1. Fungsi saat tombol Kumpulkan ditekan
+            // Fungsi Toggle Ragu-Ragu
+            const handleToggleRaguRagu = () => {
+                setRaguRaguSet(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(currentQIndex)) {
+                        newSet.delete(currentQIndex);
+                    } else {
+                        newSet.add(currentQIndex);
+                    }
+                    localStorage.setItem(sessionKey, JSON.stringify({ answers, timeLeft, shuffledQuestions, cheatWarningCount, raguRagu: Array.from(newSet) }));
+                    return newSet;
+                });
+            };
+
+            // Fungsi saat tombol Kumpulkan ditekan
             const submitExam = () => {
                 setShowConfirmModal(false);
                 setShowTimeUpModal(false);
@@ -888,9 +907,34 @@
                 question.options.length === 0 || 
                 question.options.every(opt => opt === undefined || opt === null || opt.toString().trim() === '');
 
+            // Hitung statistik untuk pop-up konfirmasi
+            const unansweredCount = shuffledQuestions.filter((q, idx) => {
+                const ans = answers[q.id];
+                const isBlank = (q.options && q.options.length > 0) ? (ans === undefined) : (!ans || ans.toString().trim() === '');
+                return isBlank;
+            }).length;
+            const raguCount = raguRaguSet.size;
+
             return (
-                <div className="flex flex-col md:flex-row gap-6 relative exam-mode w-full h-full max-w-6xl mx-auto">
+                <div className="min-h-screen bg-slate-200 flex flex-col w-full">
                     
+                    {/* --- HEADER NAVBAR ATAS */}
+                    <header className="bg-blue-900 text-white px-6 py-3.5 flex justify-between items-center shadow-md border-b border-blue-800">
+                        <h1 className="text-base md:text-lg font-bold tracking-wider uppercase">
+                            {exam.title}
+                        </h1>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-[10px] text-slate-300">Selamat datang</p>
+                                <p className="text-xs font-semibold">{currentUser.nama}</p>
+                            </div>
+                            <div className="bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-600">
+                                🎓 SISWA
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* --- MODAL PELANGGARAN / KECURANGAN --- */}
                     {showCheatModal && (
                         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
                             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border-t-8 border-red-600">
@@ -901,96 +945,144 @@
                             </div>
                         </div>
                     )}
+
+                    {/* --- CUSTOM MODAL KONFIRMASI KUMPULKAN / HENTIKAN UJIAN --- */}
                     {showConfirmModal && (
-                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
-                                <h3 className="text-xl font-bold mb-2">Sudah Selesai ?</h3>
-                                <p className="text-slate-500 text-sm mb-6">Yakin ingin mengumpulkan tugas ini ?</p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 font-semibold cursor-pointer">Batal</button>
-                                    <button onClick={submitExam} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-semibold cursor-pointer">Ya, Kumpulkan</button>
+                        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-left border border-slate-100">
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Konfirmasi Pengerjaan Soal</h3>
+                                <p className="text-slate-600 text-sm mb-4">Apa kamu yakin ingin mengakhiri dan mengirim jawaban?</p>
+                                
+                                {(unansweredCount > 0 || raguCount > 0) && (
+                                    <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl mb-5 text-xs space-y-1 text-amber-800 font-medium">
+                                        <p className="font-bold mb-1">Perhatian:</p>
+                                        {unansweredCount > 0 && <p>• Masih ada <strong>{unansweredCount} soal</strong> belum dijawab.</p>}
+                                        {raguCount > 0 && <p>• Masih ada <strong>{raguCount} soal</strong> berstatus ragu-ragu.</p>}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 pt-2">
+                                    <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-colors">Kembali Mengerjakan</button>
+                                    <button onClick={submitExam} className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer shadow-md transition-colors">Ya, Kirimkan</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    <div className="flex-1 bg-white rounded-2xl shadow-sm border p-6 flex flex-col h-full">
-                        <div className="border-b pb-3 mb-4 flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-slate-800">
-                                Soal {currentQIndex + 1} <span className={`text-xs font-semibold text-white px-2 py-0.5 rounded-md ml-2 align-middle ${isEssayQuestion ? 'bg-amber-500' : 'bg-blue-500'}`}>{isEssayQuestion ? 'ESSAY' : 'PG'}</span>
-                            </h3>
-                            <div className="md:hidden font-mono font-bold text-blue-700">{formatTime(timeLeft)}</div>
-                        </div>
+                    {/* --- KONTEN UTAMA HALAMAN UJIAN (GRID 4 KOLOM) --- */}
+                    <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-7xl mx-auto w-full items-start">
                         
-                        <div className="flex-1 text-lg overflow-y-auto mb-4">
-                            <div className="mb-6 leading-relaxed font-medium">{renderContent(question.text)}</div>
-                            
-                            {isEssayQuestion ? (
-                                <div className="mt-4">
-                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Ketik Jawaban Anda:</label>
-                                    <textarea 
-                                        className="w-full p-4 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-base min-h-[180px] transition-all resize-y"
-                                        placeholder="Ketik uraian jawaban Anda di sini secara lengkap..."
-                                        value={answers[question.id] || ''}
-                                        onChange={(e) => handleAnswer(question.id, e.target.value)}
-                                        autoFocus
-                                    ></textarea>
+                        {/* Kolom Kiri & Tengah (Lembar Soal + Navigasi Bawah) */}
+                        <div className="lg:col-span-3 flex flex-col gap-4">
+                            <div className="bg-white rounded-2xl shadow-sm border p-6 flex flex-col">
+                                <div className="border-b pb-3 mb-4 flex justify-between items-center">
+                                    <span className="bg-blue-900 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+                                        SOAL NO. {currentQIndex + 1} <span className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold ${isEssayQuestion ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white border border-blue-400'}`}>
+        {isEssayQuestion ? 'ESSAY' : 'PG'}</span>
+                                    </span>
+                                    <div className="lg:hidden font-mono font-bold text-blue-700 text-xs bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
+                                        SISA WAKTU: {formatTime(timeLeft)}
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {question.options.map((opt, idx) => (
-                                        <label key={idx} className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${answers[question.id] === idx ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
-                                            <input type="radio" name={`q-${question.id}`} checked={answers[question.id] === idx} onChange={() => handleAnswer(question.id, idx)} className="w-5 h-5 mt-1 text-blue-600" />
-                                            <div className="flex-1 text-base">{renderContent(opt)}</div>
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="border-t pt-4 flex justify-between">
-                            <button onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))} disabled={currentQIndex === 0} className="px-5 py-2.5 text-sm font-semibold border-2 rounded-xl bg-white disabled:opacity-50 cursor-pointer flex items-center gap-1 hover:bg-slate-50">
-                                <Icon name="chevron-left" size={16}/> Sebelumnya
-                            </button>
-                            {currentQIndex === shuffledQuestions.length - 1 ? (
-                                <button onClick={() => setShowConfirmModal(true)} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold cursor-pointer shadow-md shadow-emerald-500/20">Kumpulkan</button>
-                            ) : (
-                                <button onClick={() => setCurrentQIndex(prev => Math.min(shuffledQuestions.length - 1, prev + 1))} className="px-5 py-2.5 text-white bg-blue-600 rounded-xl text-sm font-semibold cursor-pointer shadow-md shadow-blue-500/20 flex items-center gap-1">
-                                    Selanjutnya <Icon name="chevron-right" size={16}/>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="w-full md:w-80 flex flex-col gap-4">
-                        <div className="hidden md:flex bg-white p-5 rounded-2xl shadow-sm border flex-col items-center justify-center">
-                            <span className="text-slate-500 text-sm mb-1 font-semibold uppercase tracking-wider">Sisa Waktu</span>
-                            <div className={`text-4xl font-mono font-black ${timeLeft < 300 ? 'text-red-600 animate-pulse' : 'text-slate-800'}`}>{formatTime(timeLeft)}</div>
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border">
-                            <h3 className="font-bold text-sm mb-4 text-slate-700 text-center border-b pb-2 uppercase tracking-wider">Navigasi Soal</h3>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {shuffledQuestions.map((q, idx) => {
-                                    let isAnswered = false;
-                                    if (!q.options || q.options.length === 0) {
-                                        isAnswered = answers[q.id] && answers[q.id].trim() !== '';
-                                    } else {
-                                        isAnswered = answers[q.id] !== undefined;
-                                    }
+                                
+                                <div className="flex-1 text-base md:text-lg overflow-y-auto mb-6">
+                                    <div className="mb-6 leading-relaxed font-medium text-slate-800">{renderContent(question.text)}</div>
                                     
-                                    return (
-                                        <button 
-                                            key={q.id} 
-                                            onClick={() => setCurrentQIndex(idx)} 
-                                            className={`w-10 h-10 rounded-xl text-sm font-black border-2 cursor-pointer transition-all ${currentQIndex === idx ? 'ring-4 ring-blue-300' : ''} ${isAnswered ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-red-500 text-white border-red-600'}`}
-                                        >
-                                            {idx + 1}
-                                        </button>
-                                    );
-                                })}
+                                    {isEssayQuestion ? (
+                                        <div className="mt-4">
+                                            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Jawaban:</label>
+                                            <textarea 
+                                                className="w-full p-4 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-base min-h-[180px] transition-all resize-y"
+                                                placeholder="Ketik uraian jawaban Anda di sini secara lengkap..."
+                                                value={answers[question.id] || ''}
+                                                onChange={(e) => handleAnswer(question.id, e.target.value)}
+                                                autoFocus
+                                            ></textarea>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {question.options.map((opt, idx) => (
+                                                <label key={idx} className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${answers[question.id] === idx ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                                                    <input type="radio" name={`q-${question.id}`} checked={answers[question.id] === idx} onChange={() => handleAnswer(question.id, idx)} className="w-5 h-5 mt-1 text-blue-600" />
+                                                    <div className="flex-1 text-base text-slate-700">{renderContent(opt)}</div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tombol Navigasi Bawah (Sebelumnya, Ragu-ragu, Selanjutnya) */}
+                            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border shadow-sm gap-2">
+                                <button onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))} disabled={currentQIndex === 0} className="px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-200 text-slate-700 disabled:opacity-40 cursor-pointer flex items-center gap-1 hover:bg-slate-300 transition-colors">
+                                    <Icon name="chevron-left" size={16}/> SEBELUMNYA
+                                </button>
+                                
+                                <button onClick={handleToggleRaguRagu} className={`px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm ${raguRaguSet.has(currentQIndex) ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
+                                    {raguRaguSet.has(currentQIndex) ? 'BATAL RAGU' : 'RAGU-RAGU'}
+                                </button>
+
+                                {currentQIndex === shuffledQuestions.length - 1 ? (
+                                    <button onClick={() => setShowConfirmModal(true)} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm">
+                                        SELESAI
+                                    </button>
+                                ) : (
+                                    <button onClick={() => setCurrentQIndex(prev => Math.min(shuffledQuestions.length - 1, prev + 1))} className="px-4 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-xs font-bold cursor-pointer shadow-sm flex items-center gap-1">
+                                        SELANJUTNYA <Icon name="chevron-right" size={16}/>
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    </div>
+
+                        {/* Kolom Kanan (Panel Sisa Waktu, Nomor Soal, & Tombol Hentikan Ujian) */}
+                        <div className="w-full flex flex-col gap-4">
+                            {/* Kotak Sisa Waktu Desktop */}
+                            <div className="hidden lg:flex bg-white p-5 rounded-2xl shadow-sm border flex-col items-center justify-center">
+                                <span className="text-slate-500 text-xs mb-1 font-bold uppercase tracking-wider">Sisa Waktu</span>
+                                <div className={`text-3xl font-mono font-black ${timeLeft < 300 ? 'text-red-600 animate-pulse' : 'text-slate-800'}`}>{formatTime(timeLeft)}</div>
+                            </div>
+
+                            {/* Panel Palet Nomor Soal */}
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border flex flex-col justify-between">
+                                <div>
+                                    <h3 className="font-bold text-xs mb-4 text-slate-700 border-b pb-2 uppercase tracking-wider">Nomor Soal</h3>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {shuffledQuestions.map((q, idx) => {
+                                            const ans = answers[q.id];
+                                            const isAnswered = (q.options && q.options.length > 0) ? (ans !== undefined) : (ans && ans.toString().trim() !== '');
+                                            const isRagu = raguRaguSet.has(idx);
+                                            const isCurrent = currentQIndex === idx;
+
+                                            // Aturan warna indikator
+                                            let bgClass = "bg-slate-200 text-slate-600 border-slate-300"; // Belum dijawab
+                                            if (isAnswered) bgClass = "bg-emerald-500 text-white border-emerald-600"; // Sudah dijawab
+                                            if (isRagu) bgClass = "bg-amber-500 text-white border-amber-600"; // Ragu-ragu
+
+                                            return (
+                                                <button 
+                                                    key={q.id} 
+                                                    onClick={() => setCurrentQIndex(idx)} 
+                                                    className={`h-10 rounded-xl text-xs font-bold border-2 cursor-pointer transition-all flex items-center justify-center ${bgClass} ${isCurrent ? 'ring-4 ring-blue-400/50 scale-105' : ''}`}
+                                                >
+                                                    {idx + 1}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Tombol Hentikan Ujian di Bawah Panel Kanan */}
+                                <div className="mt-6 pt-4 border-t border-slate-100">
+                                    <button 
+                                        onClick={() => setShowConfirmModal(true)} 
+                                        className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold tracking-wider shadow-sm transition-colors cursor-pointer uppercase"
+                                    >
+                                        SELESAI
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
                 </div>
             );
         }
