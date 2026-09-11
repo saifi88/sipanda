@@ -15,10 +15,51 @@
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .animate-in { animation: fadeIn 0.2s ease-out forwards, zoomIn 0.2s ease-out forwards; }
         .exam-mode { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+
+        /* Animasi untuk game — modern playful theme */
+        @keyframes gameShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+        @keyframes gamePop { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+        @keyframes gameFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        @keyframes gameCardIn { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes gameStarPop { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 60% { transform: scale(1.35) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+        @keyframes gameConfetti { 0% { transform: translateY(-10%) rotate(0); opacity: 1; } 100% { transform: translateY(110vh) rotate(540deg); opacity: 0; } }
+        @keyframes gameGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.55); } 50% { box-shadow: 0 0 0 10px rgba(167,139,250,0); } }
+        @keyframes gameGradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .game-shake { animation: gameShake 0.45s ease-in-out; }
+        .game-pop { animation: gamePop 0.5s ease-out; }
+        .game-float { animation: gameFloat 5s ease-in-out infinite; }
+        .game-card-in { animation: gameCardIn 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+        .game-star-pop { animation: gameStarPop 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+        .game-glow { animation: gameGlow 1.8s ease-out infinite; }
+        .game-gradient-text { background-size: 200% auto; animation: gameGradient 5s ease infinite; }
+        .game-confetti-piece { position: absolute; top: -5%; animation: gameConfetti linear infinite; }
+        @keyframes balloonRise { from { transform: translateY(62vh); } to { transform: translateY(-32vh); } }
+        @keyframes balloonWobble { 0%, 100% { margin-left: 0; } 25% { margin-left: -8px; } 75% { margin-left: 8px; } }
+        @keyframes balloonPop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+        .game-balloon { animation: balloonRise linear infinite; }
+        .game-balloon-wobble { animation: balloonWobble 0.35s ease-in-out; }
+        .game-balloon-pop { animation: balloonPop 0.35s ease-out forwards; }
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800">
     <div id="root"></div>
+
+    <!-- Modul game (dimuat sebelum aplikasi utama) -->
+    <script type="text/babel" src="games/gameData.js?v=9"></script>
+    <script type="text/babel" src="games/GameShell.js?v=9"></script>
+    <script type="text/babel" src="games/MatchGame.js?v=9"></script>
+    <script type="text/babel" src="games/MemoryGame.js?v=9"></script>
+    <script type="text/babel" src="games/QuizRushGame.js?v=9"></script>
+    <script type="text/babel" src="games/BalloonPopGame.js?v=9"></script>
+    <script type="text/babel" src="games/ScrambleGame.js?v=9"></script>
+    <script type="text/babel" src="games/SnakeLadderGame.js?v=9"></script>
+    <script type="text/babel" src="games/TrueFalseGame.js?v=9"></script>
+    <script type="text/babel" src="games/HangmanGame.js?v=9"></script>
+    <script type="text/babel" src="games/BossBattleGame.js?v=9"></script>
+    <script type="text/babel" src="games/SortGame.js?v=9"></script>
+    <script type="text/babel" src="games/FillBlankGame.js?v=9"></script>
+    <script type="text/babel" src="games/RaceGame.js?v=9"></script>
+    <script type="text/babel" src="games/GameHub.js?v=9"></script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -99,10 +140,17 @@
             const [selectedMapel, setSelectedMapel] = useState(null);
             const [selectedTaskFilter, setSelectedTaskFilter] = useState(null); 
             
-            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
+            const [activeGame, setActiveGame] = useState(null);
+            const [gamePlayKey, setGamePlayKey] = useState(0);
+            const [gameContextExamId, setGameContextExamId] = useState(null);
+
+            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [], games: [], gameResults: [] });
+
+            // Gunakan data game dari backend jika ada, jika belum pakai data contoh lokal (games/gameData.js)
+            const gamesList = (appData.games && appData.games.length > 0) ? appData.games : SAMPLE_GAMES;
 
             useEffect(() => {
-                const APP_VERSION = "03.09.2026-v2";
+                const APP_VERSION = "11.09.2026-v9";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -119,7 +167,9 @@
                             students: data.students || [],
                             exams: data.exams || [],
                             results: data.results || [],
-                            materi: data.materi || []
+                            materi: data.materi || [],
+                            games: data.games || [],
+                            gameResults: data.gameResults || []
                         });
                         setLoading(false);
                     })
@@ -140,6 +190,54 @@
                 setActiveExamData(null);
                 setSelectedMapel(null);
                 setSelectedTaskFilter(null);
+                setActiveGame(null);
+            };
+
+            // ---------- GAME (BONUS-ONLY, terhubung ke tugas via linkedExamId) ----------
+            const startGame = (game, contextExamId = null) => {
+                setActiveGame(game);
+                setGameContextExamId(contextExamId);
+                setGamePlayKey(k => k + 1);
+                setView('game');
+            };
+
+            const replayGame = () => setGamePlayKey(k => k + 1);
+
+            const exitGame = () => {
+                setActiveGame(null);
+                setView('games');
+            };
+
+            const finishGame = (result) => {
+                const record = {
+                    waktu: new Date().toLocaleString("id-ID"),
+                    nisn: currentUser.nisn,
+                    nama: currentUser.name,
+                    gameId: result.gameId,
+                    game: result.title,
+                    mapel: result.mapel,
+                    tipe: result.type,
+                    skor: result.skor,
+                    benar: result.benar,
+                    salah: result.salah,
+                    durasiDetik: result.durasiDetik
+                };
+
+                // Simpan lokal agar skor terbaik langsung tampil di Zona Game
+                setAppData(prev => ({ ...prev, gameResults: [...(prev.gameResults || []), record] }));
+
+                // Anti-farm: maksimal 1 penyimpanan per game per 30 detik (bonus-only)
+                const shouldPost = (typeof canSaveGameResult === "function")
+                    ? canSaveGameResult(currentUser.nisn, result.gameId)
+                    : true;
+                if (!shouldPost) return;
+
+                // Kirim ke backend (action "saveGameResult" di code.gs / code_v2.gs)
+                fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "saveGameResult", ...record })
+                }).catch(err => console.error("Gagal menyimpan hasil game:", err));
             };
 
             const startExam = (exam) => {
@@ -157,35 +255,20 @@
                 const examTitle = appData.exams.find(e => e.id === examId)?.title || 'Ujian';
                 const timeStr = new Date().toLocaleString("id-ID");
                 
-                // 1. UPDATE STATE LOKAL SECARA LANGSUNG
-                setAppData(prev => ({
-                    ...prev,
-                    results: [...prev.results, {
-                        waktu: timeStr,
-                        nisn: currentUser.nisn,
-                        nama: currentUser.name,
-                        ujian: examTitle,
-                        nilai: score,
-                        catatan: "",
-                        pelanggaran: cheatCount || 0
-                    }]
-                }));
-
                 const payload = {
                     action: "saveResult",
                     waktu: timeStr,
                     nisn: currentUser.nisn,
                     nama: currentUser.name,
                     ujian: examTitle,
-                    nilai: score,
-                    catatan: "",
-                    pelanggaran: cheatCount || 0,
-                    jawabanEssay: jawabanEssayString || "{}",
+                    nilai: score, // Nilai dasar Pilihan Ganda
+                    pgCount: pgCount || 0,
                     questions: shuffledQuestions || [],
-                    pgCount: pgCount || 0
+                    jawabanEssay: jawabanEssayString || "{}",
+                    pelanggaran: cheatCount || 0
                 };
 
-                // 2. KIRIM KE BACKEND GOOGLE SHEETS
+                // 1. KIRIM KE BACKEND TERLEBIH DAHULU UNTUK MENDAPATKAN NILAI AI & CATATAN
                 fetch(WEB_APP_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -193,25 +276,36 @@
                 })
                 .then(res => res.json())
                 .then(response => {
-                    console.log("Respon Server:", response);
-                    if (response.score !== undefined) {
-                        setAppData(prev => ({
-                            ...prev,
-                            results: prev.results.map(r => 
-                                (String(r.nisn) === String(currentUser.nisn) && String(r.ujian) === String(examTitle))
-                                    ? { ...r, nilai: response.score, catatan: response.catatan || "" }
-                                    : r
-                            )
-                        }));
-                    }
+                    console.log("Respon Server AI:", response);
+                    
+                    // Ambil nilai akhir & catatan dari balasan AI di code.gs
+                    const finalScore = response.score !== undefined ? response.score : score;
+                    const finalCatatan = response.catatan || "Pengerjaan berhasil disimpan.";
+
+                    // 2. UPDATE STATE LOKAL DENGAN NILAI & CATATAN VALID DARI AI
+                    setAppData(prev => ({
+                        ...prev,
+                        results: [...prev.results, {
+                            waktu: timeStr,
+                            nisn: currentUser.nisn,
+                            nama: currentUser.name,
+                            ujian: examTitle,
+                            nilai: finalScore,      // <-- Nilai akhir gabungan (PG + Esai AI)
+                            catatan: finalCatatan,  // <-- Catatan ulasan holistik dari AI
+                            pelanggaran: cheatCount || 0
+                        }]
+                    }));
+
+                    // 3. ARAHKAN SISWA KE HALAMAN HASIL / DASHBOARD DENGAN DATA YANG SUDAH JADI
+                    // (Opsional: Anda bisa langsung melemparkan data ini ke halaman ExamResult agar siswa bisa langsung melihatnya)
+                    setView('student');
+                    setActiveExamData(null);
                 })
                 .catch(err => {
                     console.error("Gagal mengirim:", err);
+                    alert("Gagal terhubung ke server. Periksa koneksi internet Anda.");
+                    setView('student');
                 });
-
-                // 3. KEMBALI KE DASHBOARD SISWA
-                setView('student');
-                setActiveExamData(null);
             };
 
             const handleToggleExamStatus = (examId) => {
@@ -263,9 +357,11 @@
                 );
             }
 
+            const isFullScreenView = view === 'exam' || view === 'game';
+
             return (
                 <div className={`min-h-screen ${view === 'exam' ? 'bg-slate-200' : 'bg-slate-100'} font-sans text-slate-800 flex flex-col`}>
-                    {view !== 'exam' && (
+                    {!isFullScreenView && (
                         <header className="bg-white shadow-sm sticky top-0 z-40">
                             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -290,7 +386,7 @@
                         </header>
                     )}
 
-                    <main className={`flex-1 max-w-7xl mx-auto w-full ${view === 'exam' ? 'p-2 sm:p-6' : 'px-4 sm:px-6 lg:px-8 py-6'}`}>
+                    <main className={`flex-1 w-full ${view === 'game' ? '' : view === 'exam' ? 'max-w-7xl mx-auto p-2 sm:p-6' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'}`}>
                         {view === 'login' && <Login onLogin={handleLogin} students={appData.students} settings={appData.settings} />}
                         {view === 'admin' && (
                             <AdminDashboard 
@@ -298,6 +394,8 @@
                                 results={appData.results} 
                                 students={appData.students} 
                                 materiList={appData.materi} 
+                                games={gamesList}
+                                gameResults={appData.gameResults}
                                 onToggleStatus={handleToggleExamStatus} 
                                 onUpdateCatatan={handleUpdateCatatan} 
                             />
@@ -307,7 +405,12 @@
                                 <DaftarMateriView 
                                     mapel={selectedMapel} 
                                     materiList={appData.materi.filter(m => m.mapel === selectedMapel)} 
+                                    exams={appData.exams}
+                                    games={gamesList}
+                                    gameResults={appData.gameResults}
+                                    currentUser={currentUser}
                                     onBack={() => setSelectedMapel(null)} 
+                                    onPlayGame={(g, examId) => startGame(g, examId)}
                                     onStartExam={(examId) => {
                                         const targetExam = appData.exams.find(ex => ex.id === examId);
                                         if (targetExam) {
@@ -322,8 +425,11 @@
                                     filterType={selectedTaskFilter}
                                     exams={appData.exams}
                                     results={appData.results}
+                                    games={gamesList}
+                                    gameResults={appData.gameResults}
                                     currentUser={currentUser}
                                     onStartExam={startExam}
+                                    onPlayGame={(g, examId) => startGame(g, examId)}
                                     onBack={() => setSelectedTaskFilter(null)}
                                 />
                             ) : (
@@ -334,8 +440,151 @@
                                     onStartExam={startExam} 
                                     onSelectMapel={setSelectedMapel} 
                                     onSelectTaskFilter={setSelectedTaskFilter}
+                                    onOpenGames={() => setView('games')}
+                                    gamesCount={gamesList.length}
                                 />
                             )
+                        )}
+                        {view === 'games' && (
+                            <GameHub 
+                                games={gamesList}
+                                gameResults={appData.gameResults}
+                                currentUser={currentUser}
+                                exams={appData.exams}
+                                contextExamId={gameContextExamId}
+                                onPlay={startGame}
+                                onBack={() => setView('student')}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'match' && (
+                            <MatchGame 
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'memory' && (
+                            <MemoryGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'quizrush' && (
+                            <QuizRushGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'balloon' && (
+                            <BalloonPopGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'scramble' && (
+                            <ScrambleGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'snake' && (
+                            <SnakeLadderGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'truefalse' && (
+                            <TrueFalseGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'hangman' && (
+                            <HangmanGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'boss' && (
+                            <BossBattleGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'sort' && (
+                            <SortGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'fillblank' && (
+                            <FillBlankGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && activeGame.type === 'race' && (
+                            <RaceGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
+                        )}
+                        {view === 'game' && activeGame && !['match', 'memory', 'quizrush', 'balloon', 'scramble', 'snake', 'truefalse', 'hangman', 'boss', 'sort', 'fillblank', 'race'].includes(activeGame.type) && (
+                            <MatchGame
+                                key={gamePlayKey}
+                                game={activeGame}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                            />
                         )}
                         {view === 'exam' && <ExamInterface exam={activeExamData} currentUser={currentUser} onFinish={finishExam} />}
                     </main>
@@ -470,7 +719,7 @@
             );
         }
 
-        function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel, onSelectTaskFilter }) {
+        function StudentDashboard({ exams, results, currentUser, onStartExam, onSelectMapel, onSelectTaskFilter, onOpenGames, gamesCount = 0 }) {
             const activeExams = exams.filter(e => e.isActive);
             const totalExams = activeExams.length;
             const studentResults = (results || []).filter(r => r.nisn === currentUser.nisn);
@@ -557,6 +806,21 @@
                         </div>
                     </div>
 
+                    {/* Banner Zona Game */}
+                    <div 
+                        onClick={onOpenGames}
+                        className="bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white p-6 rounded-2xl shadow-md cursor-pointer hover:shadow-lg transition-all flex items-center justify-between gap-4 group"
+                    >
+                        <div>
+                            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Baru</span>
+                            <h3 className="text-lg font-bold">🎮 Zona Game: Belajar Sambil Bermain</h3>
+                            <p className="text-violet-100 text-sm mt-1">Asah pengetahuanmu dalam game yang seru. Mainkan, kumpulkan bintang, dan raih skor terbaikmu. {gamesCount} game tersedia.</p>
+                        </div>
+                        <div className="shrink-0 bg-white text-violet-700 font-bold text-sm px-5 py-3 rounded-xl shadow-sm group-hover:scale-105 transition-transform">
+                            Main →
+                        </div>
+                    </div>
+
                     <div className="bg-indigo-600 text-white p-6 rounded-2xl shadow-md">
                         <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Pusat Belajar</span>
                         <h3 className="text-lg font-bold">Unduh & Pelajari Materi Pelajaran di Bawah Ini</h3>
@@ -601,7 +865,7 @@
             );
         }
 
-        function DaftarTugasFilteredView({ filterType, exams, results, currentUser, onStartExam, onBack }) {
+        function DaftarTugasFilteredView({ filterType, exams, results, games = [], gameResults = [], currentUser, onStartExam, onPlayGame, onBack }) {
             // State lokal untuk mengatur pop-up ulasan AI
             const [selectedCatatan, setSelectedCatatan] = React.useState(null);
 
@@ -699,6 +963,31 @@
                                             Mulai Kerjakan
                                         </button>
                                     )}
+
+                                    {/* Game latihan bonus yang terhubung ke tugas ini */}
+                                    {(() => {
+                                        const linked = (typeof gamesForExam === "function")
+                                            ? gamesForExam(games, exam)
+                                            : (games || []).filter(g => g.linkedExamId && String(g.linkedExamId) === String(exam.id));
+                                        if (!linked || linked.length === 0) return null;
+                                        return (
+                                            <div className="mt-3 pt-3 border-t border-dashed border-slate-200 space-y-2">
+                                                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">🎮 Latihan Bonus ({linked.length}) — tidak memengaruhi nilai</p>
+                                                {linked.slice(0, 2).map(g => {
+                                                    const best = (typeof bestScoreForGame === "function")
+                                                        ? bestScoreForGame(gameResults, currentUser.nisn, g.id)
+                                                        : null;
+                                                    return (
+                                                        <button key={g.id} onClick={() => onPlayGame && onPlayGame(g, exam.id)}
+                                                            className="w-full py-2 px-3 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-800 rounded-xl text-xs font-bold transition-colors flex items-center justify-between gap-2 cursor-pointer">
+                                                            <span className="truncate">▶ {g.title}</span>
+                                                            <span className="shrink-0 text-[10px]">{best === null ? "Belum main" : `Terbaik: ${best}`}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             );
                         })}
@@ -741,7 +1030,7 @@
             );
         }
 
-        function DaftarMateriView({ mapel, materiList, onBack, onStartExam }) {
+        function DaftarMateriView({ mapel, materiList, exams = [], games = [], gameResults = [], currentUser, onBack, onStartExam, onPlayGame }) {
             return (
                 <div className="space-y-6">
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border">
@@ -797,6 +1086,27 @@
                                                 </button>
                                             )}
                                         </div>
+                                        {/* Game latihan bonus untuk materi / tugas terkait */}
+                                        {(() => {
+                                            const linked = (games || []).filter(g =>
+                                                (item.linkedExamId && g.linkedExamId && String(g.linkedExamId) === String(item.linkedExamId)) ||
+                                                (!g.linkedExamId && g.mapel === mapel)
+                                            ).slice(0, 2);
+                                            if (linked.length === 0) return null;
+                                            return (
+                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                    {linked.map(g => (
+                                                        <button key={g.id}
+                                                            onClick={() => onPlayGame && onPlayGame(g, item.linkedExamId || null)}
+                                                            className="inline-flex items-center gap-1 px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                                            title="Latihan bonus — tidak memengaruhi nilai tugas"
+                                                        >
+                                                            🎮 {g.title}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             ))
@@ -1219,7 +1529,119 @@
             );
         }
 
-        function AdminDashboard({ exams, results, students, materiList, onToggleStatus, onUpdateCatatan }) {
+        function GameAdminPanel({ games = [], gameResults = [], exams = [] }) {
+            const [form, setForm] = useState({ id: '', type: 'match', mapel: MAPEL_LIST[0], title: '', duration: 3, linkedExamId: '', pairsText: '[{"left":"Akar","right":"Menyerap air"}]' });
+            const [saving, setSaving] = useState(false);
+            const [aiFiles, setAiFiles] = useState([]);
+            const [aiLoading, setAiLoading] = useState(false);
+            const [filter, setFilter] = useState('ALL');
+
+            const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+            const handleAiFiles = (e) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                let loaded = [];
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        loaded.push({ name: file.name, mimeType: file.type, base64: String(ev.target.result).split(',')[1] });
+                        if (loaded.length === files.length) setAiFiles(prev => [...prev, ...loaded]);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            const handleGeneratePairs = async () => {
+                if (!aiFiles.length) { alert("Unggah materi dulu."); return; }
+                setAiLoading(true);
+                try {
+                    const res = await fetch(WEB_APP_URL, {
+                        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: "generateGamePairs", files: aiFiles, mapel: form.mapel, gameType: form.type })
+                    });
+                    const out = await res.json();
+                    if (out.status === "success" && out.pairs) {
+                        set('pairsText', JSON.stringify(out.pairs, null, 1));
+                        alert("AI membuat " + out.pairs.length + " pasangan. Tinjau lalu simpan.");
+                    } else throw new Error(out.message || "Gagal");
+                } catch (err) { alert("Gagal generate: " + err.message); }
+                finally { setAiLoading(false); }
+            };
+
+            const handleSave = async (e) => {
+                e.preventDefault();
+                let pairs;
+                try { pairs = JSON.parse(form.pairsText); if (!Array.isArray(pairs) || !pairs.length) throw new Error("kosong"); }
+                catch (err) { alert("pairsText harus JSON array, contoh: [{\"left\":\"A\",\"right\":\"B\"}]"); return; }
+                const gid = form.id.trim() || (`game-${form.type}-${Date.now().toString().slice(-5)}`);
+                setSaving(true);
+                try {
+                    await fetch(WEB_APP_URL, {
+                        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: "saveGame", game: { id: gid, type: form.type, mapel: form.mapel, title: form.title || "Game Baru", duration: Number(form.duration) || 3, isActive: true, linkedExamId: form.linkedExamId, pairs } })
+                    });
+                    alert("Game tersimpan: " + gid);
+                    window.location.reload();
+                } catch (err) { alert("Gagal menyimpan: " + err.message); setSaving(false); }
+            };
+
+            const toggle = async (g) => {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "toggleGameStatus", gameId: g.id, isActive: false })
+                });
+                alert("Nonaktifkan via backend versi ini hanya mendukung matikan; aktifkan lagi dari sheet Games (kolom isActive=TRUE).");
+                window.location.reload();
+            };
+
+            const shown = games.filter(g => filter === 'ALL' || g.mapel === filter);
+            const topFor = (gid) => (gameResults || []).filter(r => r.gameId === gid).sort((a, b) => b.skor - a.skor).slice(0, 3);
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-violet-50 border border-violet-200 p-4 rounded-2xl text-xs text-violet-800">
+                        <strong>Game = latihan bonus.</strong> Hubungkan ke tugas formal via <em>linkedExamId</em> agar muncul di kartu tugas & materi. Skor game tidak mengubah nilai di <em>Hasil</em>.
+                    </div>
+                    <form onSubmit={handleSave} className="bg-white border rounded-2xl p-5 space-y-3 shadow-sm">
+                        <h4 className="font-bold">Tambah / Update Game (manual + AI)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div><label className="text-xs font-bold">ID (kosongkan = otomatis)</label><input value={form.id} onChange={e => set('id', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm" placeholder="match-mtk-02" /></div>
+                            <div><label className="text-xs font-bold">Tipe</label><select value={form.type} onChange={e => set('type', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm"><option value="match">match</option><option value="memory">memory</option><option value="quizrush">quizrush</option><option value="balloon">balloon</option><option value="scramble">scramble</option><option value="snake">snake</option><option value="truefalse">truefalse</option><option value="hangman">hangman</option><option value="boss">boss</option><option value="sort">sort</option><option value="fillblank">fillblank</option><option value="race">race</option></select></div>
+                            <div><label className="text-xs font-bold">Mapel</label><select value={form.mapel} onChange={e => set('mapel', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm">{MAPEL_LIST.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                            <div className="md:col-span-2"><label className="text-xs font-bold">Judul</label><input value={form.title} onChange={e => set('title', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm" placeholder="Perkalian Cepat 2" /></div>
+                            <div><label className="text-xs font-bold">Durasi (mnt)</label><input type="number" value={form.duration} onChange={e => set('duration', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm" /></div>
+                            <div className="md:col-span-3"><label className="text-xs font-bold">Hubungkan ke Tugas (opsional)</label><select value={form.linkedExamId} onChange={e => set('linkedExamId', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm"><option value="">-- Bebas (Zona Game saja) --</option>{exams.map(ex => <option key={ex.id} value={ex.id}>{ex.title} ({ex.id})</option>)}</select></div>
+                        </div>
+                        <div><label className="text-xs font-bold">Pairs JSON</label><textarea rows="4" value={form.pairsText} onChange={e => set('pairsText', e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs font-mono" /></div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <input type="file" multiple accept="image/jpeg,image/png,application/pdf" onChange={handleAiFiles} className="text-xs" />
+                            <button type="button" onClick={handleGeneratePairs} disabled={aiLoading || !aiFiles.length} className="px-3 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold disabled:opacity-40 cursor-pointer">{aiLoading ? "AI..." : "✨ Generate pairs AI"}</button>
+                            <span className="text-[11px] text-slate-500">{aiFiles.length} file</span>
+                            <button type="submit" disabled={saving} className="ml-auto px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold cursor-pointer">{saving ? "Menyimpan..." : "Simpan Game"}</button>
+                        </div>
+                    </form>
+                    <div className="flex gap-2 items-center">
+                        <select value={filter} onChange={e => setFilter(e.target.value)} className="px-3 py-2 border rounded-xl text-xs"><option value="ALL">Semua mapel</option>{MAPEL_LIST.map(m => <option key={m} value={m}>{m}</option>)}</select>
+                        <span className="text-xs text-slate-500">{shown.length} game</span>
+                    </div>
+                    <div className="space-y-2">
+                        {shown.map(g => (
+                            <div key={g.id} className="bg-white border rounded-xl p-4 flex flex-col sm:flex-row gap-3 justify-between">
+                                <div><p className="font-bold text-sm">{g.title} <span className="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full ml-1">{g.type}</span></p><p className="text-xs text-slate-500">{g.id} · {g.mapel} · {(g.pairs || []).length} pasangan{ g.linkedExamId ? ` · 🔗 ${g.linkedExamId}` : ""}</p>
+                                {topFor(g.id).length > 0 && <p className="text-[11px] text-amber-600 mt-1">🏆 {topFor(g.id).map(t => `${t.nama}:${t.skor}`).join(" · ")}</p>}</div>
+                                <div className="flex gap-2 items-start">
+                                    <button onClick={() => setForm({ id: g.id, type: g.type, mapel: g.mapel, title: g.title, duration: g.duration, linkedExamId: g.linkedExamId || '', pairsText: JSON.stringify(g.pairs || [], null, 1) })} className="px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold cursor-pointer">Edit</button>
+                                    <button onClick={() => toggle(g)} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold cursor-pointer">Matikan</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminDashboard({ exams, results, students, materiList, games = [], gameResults = [], onToggleStatus, onUpdateCatatan }) {
             const [activeTab, setActiveTab] = useState('overview');
             const [loadingMateri, setLoadingMateri] = useState(false);
 
@@ -1457,6 +1879,7 @@
                             <button onClick={() => setActiveTab('overview')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>📊 Pantau Siswa</button>
                             <button onClick={() => setActiveTab('ai-generator')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'ai-generator' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>🤖 Buat Soal AI</button>
                             <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'exams' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Status</button>
+                            <button onClick={() => setActiveTab('games')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'games' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>🎮 Kelola Game</button>
                             <button onClick={() => setActiveTab('results')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'results' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Rekap Nilai</button>
                             <button onClick={() => setActiveTab('materi')} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === 'materi' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Kelola Materi</button>
                         </nav>
@@ -1798,10 +2221,17 @@
                                 </div>
                             </div>
                         )}
+                        {activeTab === 'games' && (
+                            <div>
+                                <h3 className="text-lg font-bold mb-2">Kelola Game Bonus</h3>
+                                <p className="text-xs text-slate-500 mb-4">Buat manual atau via AI, hubungkan ke tugas agar muncul sebagai latihan bonus.</p>
+                                <GameAdminPanel games={games} gameResults={gameResults} exams={exams} />
+                            </div>
+                        )}
                         {activeTab === 'results' && (
                             <div>
                                 <h3 className="text-lg font-bold mb-2">Rekap Nilai & Catatan</h3>
-                                <p className="text-xs text-slate-500 mb-6">Klik tombol "Catatan" untuk memberi catatan.</p>
+                                <p className="text-xs text-slate-500 mb-4">Nilai formal dari tugas. Skor game bonus tampil terpisah di bawah.</p>
                                 <div className="overflow-x-auto border rounded-xl bg-white">
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-slate-50 border-b">
@@ -1825,6 +2255,19 @@
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="mt-6 bg-violet-50 border border-violet-200 rounded-xl p-4">
+                                    <h4 className="font-bold text-sm text-violet-800 mb-2">🎮 Skor Game Bonus (terpisah dari nilai formal, {(gameResults || []).length} catatan)</h4>
+                                    {(gameResults || []).length === 0 ? (
+                                        <p className="text-xs text-slate-500">Belum ada skor game.</p>
+                                    ) : (
+                                        <div className="overflow-x-auto bg-white rounded-lg border">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-slate-50 border-b"><tr><th className="p-2">Waktu</th><th className="p-2">Nama</th><th className="p-2">Game</th><th className="p-2 text-center">Skor</th></tr></thead>
+                                                <tbody>{gameResults.slice(-10).reverse().map((g, i) => (<tr key={i} className="border-b"><td className="p-2">{g.waktu}</td><td className="p-2 font-bold">{g.nama}</td><td className="p-2">{g.game}</td><td className="p-2 text-center font-black text-violet-600">{g.skor}</td></tr>))}</tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

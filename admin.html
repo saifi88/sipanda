@@ -153,7 +153,7 @@
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
             const [loading, setLoading] = useState(true);
-            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [] });
+            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [], games: [], gameResults: [] });
 
             useEffect(() => {
                 fetch(WEB_APP_URL + "?action=getInitData")
@@ -164,7 +164,9 @@
                             students: data.students || [],
                             exams: data.exams || [],
                             results: data.results || [],
-                            materi: data.materi || []
+                            materi: data.materi || [],
+                            games: data.games || [],
+                            gameResults: data.gameResults || []
                         });
                         setLoading(false);
                     })
@@ -257,6 +259,8 @@
                     results={appData.results} 
                     students={appData.students} 
                     materiList={appData.materi} 
+                    games={appData.games}
+                    gameResults={appData.gameResults}
                     onToggleStatus={handleToggleExamStatus} 
                     onUpdateCatatan={handleUpdateCatatan} 
                     onLogout={() => setIsLoggedIn(false)}
@@ -264,7 +268,87 @@
             );
         }
 
-        function AdminDashboardFull({ exams, results, students, materiList, onToggleStatus, onUpdateCatatan, onLogout }) {
+        function GameAdminPanelStandalone({ games = [], gameResults = [], exams = [] }) {
+            const [form, setForm] = useState({ id: '', type: 'match', mapel: MAPEL_LIST[0], title: '', duration: 3, linkedExamId: '', pairsText: '[{"left":"Akar","right":"Menyerap air"}]' });
+            const [saving, setSaving] = useState(false);
+            const [aiFiles, setAiFiles] = useState([]);
+            const [aiLoading, setAiLoading] = useState(false);
+            const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+            const handleAiFiles = (e) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                let loaded = [];
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        loaded.push({ name: file.name, mimeType: file.type, base64: String(ev.target.result).split(',')[1] });
+                        if (loaded.length === files.length) setAiFiles(prev => [...prev, ...loaded]);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+            const handleGeneratePairs = async () => {
+                if (!aiFiles.length) { alert("Unggah materi dulu."); return; }
+                setAiLoading(true);
+                try {
+                    const res = await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: "generateGamePairs", files: aiFiles, mapel: form.mapel, gameType: form.type }) });
+                    const out = await res.json();
+                    if (out.status === "success" && out.pairs) { set('pairsText', JSON.stringify(out.pairs, null, 1)); alert("AI membuat " + out.pairs.length + " pasangan."); }
+                    else throw new Error(out.message || "Gagal");
+                } catch (err) { alert("Gagal generate: " + err.message); }
+                finally { setAiLoading(false); }
+            };
+            const handleSave = async (e) => {
+                e.preventDefault();
+                let pairs;
+                try { pairs = JSON.parse(form.pairsText); if (!Array.isArray(pairs) || !pairs.length) throw new Error("kosong"); }
+                catch (err) { alert("pairsText harus JSON array valid."); return; }
+                const gid = form.id.trim() || ("game-" + form.type + "-" + Date.now().toString().slice(-5));
+                setSaving(true);
+                try {
+                    await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: "saveGame", game: { id: gid, type: form.type, mapel: form.mapel, title: form.title || "Game Baru", duration: Number(form.duration) || 3, isActive: true, linkedExamId: form.linkedExamId, pairs } }) });
+                    alert("Game tersimpan: " + gid); window.location.reload();
+                } catch (err) { alert("Gagal: " + err.message); setSaving(false); }
+            };
+            const topFor = (gid) => (gameResults || []).filter(r => r.gameId === gid).sort((a, b) => b.skor - a.skor).slice(0, 3);
+            return (
+                <div className="space-y-4 animate-in pb-10">
+                    <div className="bg-violet-50 border border-violet-200 p-3 text-xs text-violet-800">Game = latihan bonus. Hubungkan <b>linkedExamId</b> agar muncul di kartu tugas & materi. Skor tidak mengubah nilai formal.</div>
+                    <div className="bg-white border border-gray-300 shadow-sm">
+                        <div className="bg-violet-600 text-white p-3 font-semibold text-sm">Tambah / Update Game</div>
+                        <form onSubmit={handleSave} className="p-4 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div><label className="block text-xs font-semibold mb-1">ID (opsional)</label><input value={form.id} onChange={e => set('id', e.target.value)} className="w-full p-2 border text-sm" placeholder="match-mtk-02" /></div>
+                                <div><label className="block text-xs font-semibold mb-1">Tipe</label><select value={form.type} onChange={e => set('type', e.target.value)} className="w-full p-2 border text-sm"><option value="match">match</option><option value="memory">memory</option><option value="quizrush">quizrush</option><option value="balloon">balloon</option><option value="scramble">scramble</option><option value="snake">snake</option><option value="truefalse">truefalse</option><option value="hangman">hangman</option><option value="boss">boss</option><option value="sort">sort</option><option value="fillblank">fillblank</option><option value="race">race</option></select></div>
+                                <div><label className="block text-xs font-semibold mb-1">Mapel</label><select value={form.mapel} onChange={e => set('mapel', e.target.value)} className="w-full p-2 border text-sm">{MAPEL_LIST.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                                <div className="md:col-span-2"><label className="block text-xs font-semibold mb-1">Judul</label><input value={form.title} onChange={e => set('title', e.target.value)} className="w-full p-2 border text-sm" /></div>
+                                <div><label className="block text-xs font-semibold mb-1">Durasi</label><input type="number" value={form.duration} onChange={e => set('duration', e.target.value)} className="w-full p-2 border text-sm" /></div>
+                                <div className="md:col-span-3"><label className="block text-xs font-semibold mb-1">Hubungkan ke Tugas</label><select value={form.linkedExamId} onChange={e => set('linkedExamId', e.target.value)} className="w-full p-2 border text-sm"><option value="">-- Bebas --</option>{exams.map(ex => <option key={ex.id} value={ex.id}>{ex.title} ({ex.id})</option>)}</select></div>
+                            </div>
+                            <div><label className="block text-xs font-semibold mb-1">Pairs JSON</label><textarea rows="4" value={form.pairsText} onChange={e => set('pairsText', e.target.value)} className="w-full p-2 border text-xs font-mono"></textarea></div>
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <input type="file" multiple onChange={handleAiFiles} className="text-xs" />
+                                <button type="button" onClick={handleGeneratePairs} disabled={aiLoading || !aiFiles.length} className="px-3 py-2 bg-violet-600 text-white text-xs font-bold disabled:bg-gray-400 cursor-pointer">{aiLoading ? "AI..." : "✨ Generate AI"}</button>
+                                <button type="submit" disabled={saving} className="ml-auto px-4 py-2 bg-emerald-600 text-white text-xs font-bold cursor-pointer">{saving ? "Menyimpan..." : "Simpan Game"}</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div className="bg-white border border-gray-300 shadow-sm">
+                        <div className="bg-slate-700 text-white p-3 font-semibold text-sm">Daftar Game ({games.length}) + Top Skor</div>
+                        <div className="p-4 space-y-2">
+                            {games.map(g => (
+                                <div key={g.id} className="border p-3 bg-gray-50 flex flex-col sm:flex-row justify-between gap-2">
+                                    <div><h4 className="font-bold text-sm">{g.title} <span className="text-[10px] bg-violet-100 px-2 py-0.5 rounded-full">{g.type}</span></h4><p className="text-xs text-gray-500">{g.id} · {g.mapel} · {(g.pairs || []).length} pasangan{g.linkedExamId ? ` · 🔗 ${g.linkedExamId}` : ""}</p>{topFor(g.id).length > 0 && <p className="text-[11px] text-amber-600">🏆 {topFor(g.id).map(t => `${t.nama}:${t.skor}`).join(" · ")}</p>}</div>
+                                    <button onClick={() => setForm({ id: g.id, type: g.type, mapel: g.mapel, title: g.title, duration: g.duration, linkedExamId: g.linkedExamId || '', pairsText: JSON.stringify(g.pairs || [], null, 1) })} className="px-3 py-1.5 bg-white border text-xs font-bold cursor-pointer self-start">Edit</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminDashboardFull({ exams, results, students, materiList, games = [], gameResults = [], onToggleStatus, onUpdateCatatan, onLogout }) {
             const [activeTab, setActiveTab] = useState('overview');
             const [loadingMateri, setLoadingMateri] = useState(false);
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -436,6 +520,7 @@
                         <nav className="py-2 flex-1 overflow-y-auto">
                             <button onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} className={navItemClass('overview')}>Beranda</button>
                             <button onClick={() => { setActiveTab('ai-generator'); setIsSidebarOpen(false); }} className={navItemClass('ai-generator')}>Generate Soal AI</button>
+                            <button onClick={() => { setActiveTab('games'); setIsSidebarOpen(false); }} className={navItemClass('games')}>🎮 Kelola Game</button>
                             <button onClick={() => { setActiveTab('materi'); setIsSidebarOpen(false); }} className={navItemClass('materi')}>Kelola Materi</button>
                             <button onClick={() => { setActiveTab('exams'); setIsSidebarOpen(false); }} className={navItemClass('exams')}>Kelola Tugas</button>
                             <button onClick={() => { setActiveTab('results'); setIsSidebarOpen(false); }} className={navItemClass('results')}>Rekap Nilai</button>
@@ -653,6 +738,10 @@
                                         </div>
                                     )}
                                 </div>
+                            )}
+
+                            {activeTab === 'games' && (
+                                <GameAdminPanelStandalone games={games} gameResults={gameResults} exams={exams} />
                             )}
 
                             {activeTab === 'exams' && (
