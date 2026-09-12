@@ -115,7 +115,7 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
                                         <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/25 backdrop-blur">{theme.label}</span>
                                     </div>
                                     <h3 className="relative font-black text-lg leading-snug mt-2.5 pr-16 drop-shadow-sm">{game.title}</h3>
-                                    <p className="relative text-white/85 text-xs mt-1 font-medium">{theme.desc} · {(game.pairs || []).length} pasangan · {game.duration || 3} mnt</p>
+                                    <p className="relative text-white/85 text-xs mt-1 font-medium">{theme.desc} · {(() => { const c = (typeof levelBankCounts === "function" ? levelBankCounts(game) : null); if (c && c.perLevel) return `🌱${c.mudah} 🔥${c.sedang} ⚡${c.sulit} soal`; return `${(game.pairs || []).length} soal dasar`; })()} · {game.duration || 3} mnt · 🌱🔥⚡ 3 level</p>
                                 </div>
                                 <div className="p-4">
                                     {linkedTitle && (
