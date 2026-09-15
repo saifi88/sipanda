@@ -177,7 +177,7 @@
                 e.preventDefault();
                 const validUser = appData.settings.adminUser || 'admin';
                 const inputPassHash = await hashString(password);
-                const validPassHash = appData.settings.adminPassHash || '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+                const validPassHash = appData.settings.adminPassHash || '80a00928b141f1ff92d58199afd55f6c493724060caf2f7b6e50ca8cdb094651';
 
                 if (username === validUser && inputPassHash === validPassHash) {
                     setIsLoggedIn(true);

@@ -701,7 +701,7 @@
                 e.preventDefault();
                 const validUser = settings.adminUser || 'admin';
                 const inputPassHash = await hashString(adminPass);
-                const validPassHash = settings.adminPassHash || '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+                const validPassHash = settings.adminPassHash || '80a00928b141f1ff92d58199afd55f6c493724060caf2f7b6e50ca8cdb094651';
 
                 if (adminUser === validUser && inputPassHash === validPassHash) {
                     onLogin({ name: 'Guru / Admin' }, 'admin');
