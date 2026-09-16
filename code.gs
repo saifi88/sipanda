@@ -653,6 +653,80 @@ function setupMillionaireQuestions() {
   return { ok: true, sheet: MILLIONAIRE_QUESTIONS_SHEET, created: false, headerValid: true };
 }
 
+// ---------------------------------------------------------------------------
+// GAME RESULTS SCHEMA MIGRATION — Phase 10A (PHYSICAL 11 → 15, HEADER ONLY)
+// Aman: hanya melengkapi 4 sel header (kolom 12-15) bila sheet masih schema lama
+// 11 kolom. Tidak menyentuh 11 kolom/data lama, tidak rewrite historical rows.
+// Idempotent: NO-OP bila header sudah canonical 15 kolom.
+// Dijalankan manual dari editor Apps Script: setupGameResultsSchema()
+// ---------------------------------------------------------------------------
+function classifyGameResultsSchema_(headerRow, lastCol) {
+  var canonical = GAME_RESULTS_HEADER.slice();
+  var legacy = GAME_RESULTS_HEADER.slice(0, 11);
+  var cells = (headerRow || []).map(function(h) { return String(h === null || h === undefined ? "" : h).trim(); });
+  while (cells.length < 15) cells.push("");
+  var first11 = cells.slice(0, 11);
+  var first15 = cells.slice(0, 15);
+  var first11Ok = true;
+  for (var i = 0; i < 11; i++) {
+    if (first11[i] !== legacy[i]) { first11Ok = false; break; }
+  }
+  var first15Ok = first11Ok;
+  if (first15Ok) {
+    for (var j = 11; j < 15; j++) {
+      if (first15[j] !== canonical[j]) { first15Ok = false; break; }
+    }
+  }
+  // Kolom di kanan 11 (12..lastCol) harus kosong agar layak disebut legacy.
+  var beyondEmpty = true;
+  var rightEnd = Math.max(lastCol, 11);
+  for (var k = 11; k < rightEnd; k++) {
+    var v = (k < cells.length) ? cells[k] : "";
+    if (v !== "") { beyondEmpty = false; break; }
+  }
+  // Catat juga isi kanan yang tak terduga untuk diagnostik (maks 5 kolom).
+  var beyondShown = [];
+  for (var m = 11; m < Math.min(rightEnd, 20); m++) {
+    beyondShown.push((m < cells.length) ? cells[m] : "");
+  }
+  if (first15Ok && lastCol === 15) return { status: "canonical15", actual: first15, beyond: beyondShown };
+  if (first11Ok && beyondEmpty) return { status: "legacy11", actual: cells.slice(0, Math.max(rightEnd, 11)), beyond: beyondShown };
+  return { status: "mismatch", actual: cells.slice(0, Math.max(Math.min(rightEnd, 20), 11)), beyond: beyondShown };
+}
+
+function setupGameResultsSchema() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error("setupGameResultsSchema gagal: Spreadsheet aktif tidak ditemukan (SpreadsheetApp.getActiveSpreadsheet() == null). Buka file Spreadsheet SI-PANDA lalu jalankan fungsi ini dari editor Apps Script yang terikat (bound).");
+  }
+  var sheet = ss.getSheetByName(GAME_RESULTS_SHEET);
+  if (!sheet) {
+    throw new Error("setupGameResultsSchema dibatalkan: sheet \"" + GAME_RESULTS_SHEET + "\" tidak ditemukan. Fungsi ini TIDAK membuat sheet baru agar tidak menyembunyikan kesalahan nama file/spreadsheet. Buka sheet GameResults yang benar, lalu jalankan ulang. Data existing TIDAK diubah.");
+  }
+  if (sheet.getLastRow() < 1 || sheet.getLastColumn() < 1) {
+    throw new Error("setupGameResultsSchema dibatalkan: sheet \"" + GAME_RESULTS_SHEET + "\" kosong (tidak ada header baris 1). Fungsi ini TIDAK menebak isi header. Isi header baris 1 sesuai kontrak Phase 10 secara manual, lalu jalankan ulang. Data existing TIDAK diubah.");
+  }
+  var lastCol = sheet.getLastColumn();
+  var headerRow = sheet.getRange(1, 1, 1, Math.max(lastCol, 1)).getValues()[0];
+  var cls = classifyGameResultsSchema_(headerRow, lastCol);
+  if (cls.status === "canonical15") {
+    return { ok: true, sheet: GAME_RESULTS_SHEET, migrated: false, headerValid: true };
+  }
+  if (cls.status === "legacy11") {
+    while (sheet.getMaxColumns() < 15) sheet.insertColumnAfter(sheet.getMaxColumns());
+    sheet.getRange(1, 12, 1, 4).setValues([GAME_RESULTS_HEADER.slice(11)]);
+    sheet.getRange(1, 12, 1, 4).setFontWeight("bold");
+    return { ok: true, sheet: GAME_RESULTS_SHEET, migrated: true, headerValid: true };
+  }
+  throw new Error(
+    "setupGameResultsSchema dibatalkan: header sheet \"" + GAME_RESULTS_SHEET + "\" bukan schema lama 11 kolom dan bukan canonical 15 kolom. " +
+    "Expected legacy [" + GAME_RESULTS_HEADER.slice(0, 11).join(",") + "] " +
+    "atau canonical [" + GAME_RESULTS_HEADER.join(",") + "]. " +
+    "Actual [" + cls.actual.join(",") + "]. " +
+    "Data existing TIDAK diubah. Perbaiki header baris 1 secara manual, lalu jalankan ulang fungsi ini."
+  );
+}
+
 function setupGameSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var resultsSheet = ss.getSheetByName(GAME_RESULTS_SHEET);
