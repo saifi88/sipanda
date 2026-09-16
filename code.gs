@@ -557,6 +557,68 @@ function readMillionaireQuestions_(ss) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// MILLIONAIRE SHEET SETUP — Phase 09 (AUTOMATIC QUESTIONS SHEET SETUP)
+// Idempotent create-if-missing untuk sheet "MillionaireQuestions".
+// - Tidak memasukkan soal demo/fallback ke spreadsheet (FALLBACK hanya di MillionaireQuestions.js).
+// - Tidak mengubah GAME_RESULTS_HEADER / gameplay / frontend.
+// - Dijalankan manual dari editor Apps Script: setupMillionaireQuestions()
+// ---------------------------------------------------------------------------
+function validateMillionaireQuestionsHeader_(headerRow) {
+  var actual = (headerRow || []).map(function(h) { return String(h === null || h === undefined ? "" : h).trim(); });
+  actual = actual.slice(0, MILLIONAIRE_QUESTIONS_HEADER.length);
+  while (actual.length < MILLIONAIRE_QUESTIONS_HEADER.length) actual.push("");
+  var mismatches = [];
+  for (var i = 0; i < MILLIONAIRE_QUESTIONS_HEADER.length; i++) {
+    if (actual[i] !== MILLIONAIRE_QUESTIONS_HEADER[i]) {
+      mismatches.push({ col: i + 1, expected: MILLIONAIRE_QUESTIONS_HEADER[i], actual: actual[i] });
+    }
+  }
+  return {
+    ok: mismatches.length === 0,
+    mismatches: mismatches,
+    expected: MILLIONAIRE_QUESTIONS_HEADER.slice(),
+    actual: actual
+  };
+}
+
+function setupMillionaireQuestions() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error("setupMillionaireQuestions gagal: Spreadsheet aktif tidak ditemukan (SpreadsheetApp.getActiveSpreadsheet() == null). Buka file Spreadsheet SI-PANDA lalu jalankan fungsi ini dari editor Apps Script yang terikat (bound).");
+  }
+  var sheet = ss.getSheetByName(MILLIONAIRE_QUESTIONS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(MILLIONAIRE_QUESTIONS_SHEET);
+    sheet.appendRow(MILLIONAIRE_QUESTIONS_HEADER);
+    sheet.getRange(1, 1, 1, MILLIONAIRE_QUESTIONS_HEADER.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+    return { ok: true, sheet: MILLIONAIRE_QUESTIONS_SHEET, created: true, headerValid: true };
+  }
+  // Sheet sudah ada: jangan buat sheet baru. Jika sheet kosong total, aman tulis header.
+  if (sheet.getLastRow() < 1 || sheet.getLastColumn() < 1) {
+    sheet.appendRow(MILLIONAIRE_QUESTIONS_HEADER);
+    sheet.getRange(1, 1, 1, MILLIONAIRE_QUESTIONS_HEADER.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+    return { ok: true, sheet: MILLIONAIRE_QUESTIONS_SHEET, created: false, headerValid: true };
+  }
+  var headerRow = sheet.getRange(1, 1, 1, MILLIONAIRE_QUESTIONS_HEADER.length).getValues()[0];
+  var check = validateMillionaireQuestionsHeader_(headerRow);
+  if (!check.ok) {
+    var details = check.mismatches.map(function(m) {
+      return "kolom " + m.col + ": expected \"" + m.expected + "\" got \"" + m.actual + "\"";
+    }).join("; ");
+    throw new Error(
+      "setupMillionaireQuestions dibatalkan: header sheet \"" + MILLIONAIRE_QUESTIONS_SHEET + "\" tidak sesuai kontrak 12 kolom. " +
+      "Mismatch [" + details + "]. " +
+      "Expected [" + check.expected.join(",") + "]. " +
+      "Actual [" + check.actual.join(",") + "]. " +
+      "Data existing TIDAK diubah. Perbaiki header baris 1 secara manual sesuai urutan kontrak, lalu jalankan ulang fungsi ini."
+    );
+  }
+  return { ok: true, sheet: MILLIONAIRE_QUESTIONS_SHEET, created: false, headerValid: true };
+}
+
 function setupGameSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var resultsSheet = ss.getSheetByName(GAME_RESULTS_SHEET);
