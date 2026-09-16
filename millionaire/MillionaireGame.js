@@ -510,21 +510,10 @@ function MillionaireGame(props) {
         prizeLadderSnapshot: PRIZE_LADDER.map(function(p,i){ return { level:i+1, prize:p, isSafe: SAFE_LEVELS.indexOf(i+1)!==-1 }; })
       })
     };
-    // Anti-farm guard via existing canSaveGameResult if available
-    var shouldPost = true;
-    try {
-      if (typeof canSaveGameResult === "function") {
-        shouldPost = canSaveGameResult(currentUser.nisn, result.gameId, String(levelReached));
-      } else if (M.antiFarmKey) {
-        // fallback local check using same key
-        var key = M.antiFarmKey(currentUser.nisn, result.gameId, String(levelReached));
-        var last = Number(localStorage.getItem(key) || 0);
-        if (Date.now() - last < 30000) shouldPost = false;
-        else localStorage.setItem(key, String(Date.now()));
-      }
-    } catch(e){ shouldPost = true; }
-
-    // Call parent finishGame (which will also do canSaveGameResult and POST saveGameResult)
+    // Phase 10C: NO local anti-farm pre-call here. App.finishGame() is the sole
+    // owner of the canSaveGameResult gate; a pre-call would write the timestamp
+    // and force the App gate to reject the same key (<30s), so POST never fired.
+    // Call parent finishGame (which does the single canSaveGameResult check and POST saveGameResult)
     // But we must ensure we don't double-save if onFinish already handles it.
     // Our resultSaved guard prevents duplicate call to onFinish
     _setState(function(s){ return Object.assign({}, s, { resultSaved:true, durationDetik: dur, finishedAt: finishedAt }); });
