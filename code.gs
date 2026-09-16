@@ -1,13 +1,13 @@
 var GAMES_SHEET = "Games";
 var GAME_RESULTS_SHEET = "GameResults";
-var GAME_RESULTS_HEADER = ["waktu", "nisn", "nama", "gameId", "game", "mapel", "tipe", "skor", "benar", "salah", "durasiDetik"];
+var GAME_RESULTS_HEADER = ["waktu", "nisn", "nama", "gameId", "game", "mapel", "tipe", "skor", "benar", "salah", "durasiDetik", "level", "virtualRupiah", "safeRupiah", "extra"];
 var GAMES_HEADER = ["id", "type", "mapel", "title", "duration", "isActive", "linkedExamId", "pairs"];
 // Bonus-only linking: linkedExamId menghubungkan game latihan ke tugas formal (Soal.id).
 // Skema 8 kolom; pembaca tetap kompatibel dengan skema lama 7 kolom (pairs di kolom 7).
 // ---------------------------------------------------------------------------
 // MILLIONAIRE DATA LAYER — Phase 03 (DATA ONLY, no gameplay)
 // U1: applied to BOTH code.gs and code_v2.gs until canonical verified (PHASE_02 U1 BLOCKED)
-// U2: GameResults 11→15 not yet deployed; this change is read-only for questions, no GameResults write change
+// U2: GameResults 11→15 implemented backward-compatibly in Phase 10 (code only, not yet deployed)
 // ---------------------------------------------------------------------------
 var MILLIONAIRE_QUESTIONS_SHEET = "MillionaireQuestions";
 var MILLIONAIRE_QUESTIONS_HEADER = ["id","mapel","level","question","optionA","optionB","optionC","optionD","answer","prize","isSafe","explanation"];
@@ -271,8 +271,22 @@ function doPost(e) {
     }
 
     // --- 7. SIMPAN HASIL GAME SISWA (BONUS, tidak memengaruhi nilai formal) ---
+    // Phase 10: GameResults 11→15 backward-compatible. 11 kolom depan tidak berubah;
+    // 4 kolom Millionaire di belakang diisi dari payload bila ada, "" bila tidak ada.
+    // Tidak ada migrasi/penulisan ulang historical rows; tidak ada kalkulasi ulang nilai frontend.
     if (data.action === "saveGameResult") {
       var gameSheet = getOrCreateSheet_(ss, GAME_RESULTS_SHEET, GAME_RESULTS_HEADER, ["B"]);
+      var levelVal = (data.level === undefined || data.level === null || data.level === "") ? "" : String(data.level);
+      var vrVal = (data.virtualRupiah === undefined || data.virtualRupiah === null || data.virtualRupiah === "") ? "" : Number(data.virtualRupiah);
+      if (vrVal !== "" && isNaN(vrVal)) vrVal = "";
+      var srVal = (data.safeRupiah === undefined || data.safeRupiah === null || data.safeRupiah === "") ? "" : Number(data.safeRupiah);
+      if (srVal !== "" && isNaN(srVal)) srVal = "";
+      var extraVal = data.extra;
+      if (extraVal === undefined || extraVal === null) {
+        extraVal = "";
+      } else if (typeof extraVal !== "string") {
+        try { extraVal = JSON.stringify(extraVal); } catch (e) { extraVal = String(extraVal); }
+      }
       gameSheet.appendRow([
         data.waktu || new Date().toLocaleString("id-ID"),
         String(data.nisn || ""),
@@ -284,7 +298,11 @@ function doPost(e) {
         Number(data.skor) || 0,
         Number(data.benar) || 0,
         Number(data.salah) || 0,
-        Number(data.durasiDetik) || 0
+        Number(data.durasiDetik) || 0,
+        levelVal,
+        vrVal,
+        srVal,
+        extraVal
       ]);
       return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
     }
@@ -421,8 +439,20 @@ function readGames_(ss) {
 function readGameResults_(ss) {
   var sheet = ss.getSheetByName(GAME_RESULTS_SHEET);
   if (!sheet || sheet.getLastRow() < 2) return [];
-  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, GAME_RESULTS_HEADER.length).getValues();
+  // Phase 10 backward-compatible: baca hingga 15 kolom bila tersedia,
+  // tetapi toleransi baris lama 11 kolom (kolom 12-15 → "").
+  // Tidak ada migrasi/penulisan ulang; hanya pembacaan.
+  var width = Math.min(Math.max(sheet.getLastColumn(), 11), GAME_RESULTS_HEADER.length);
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues();
   return rows.filter(function(r) { return r[1]; }).map(function(r) {
+    var lvl = (r.length > 11 && r[11] !== undefined && r[11] !== null && String(r[11]) !== "") ? String(r[11]) : "";
+    var vrRaw = (r.length > 12) ? r[12] : "";
+    var vr = (vrRaw === undefined || vrRaw === null || vrRaw === "") ? "" : Number(vrRaw);
+    if (vr !== "" && isNaN(vr)) vr = "";
+    var srRaw = (r.length > 13) ? r[13] : "";
+    var sr = (srRaw === undefined || srRaw === null || srRaw === "") ? "" : Number(srRaw);
+    if (sr !== "" && isNaN(sr)) sr = "";
+    var ex = (r.length > 14 && r[14] !== undefined && r[14] !== null) ? String(r[14]) : "";
     return {
       waktu: String(r[0] || ""),
       nisn: String(r[1]),
@@ -434,14 +464,18 @@ function readGameResults_(ss) {
       skor: Number(r[7]) || 0,
       benar: Number(r[8]) || 0,
       salah: Number(r[9]) || 0,
-      durasiDetik: Number(r[10]) || 0
+      durasiDetik: Number(r[10]) || 0,
+      level: lvl,
+      virtualRupiah: vr,
+      safeRupiah: sr,
+      extra: ex
     };
   });
 }
 
 // ---------------------------------------------------------------------------
-// MILLIONAIRE DATA LAYER — Phase 03 (BACKEND READ ONLY, no GameResults write yet)
-// Respects U2: does NOT modify GameResults 11→15 write path; read-only for questions
+// MILLIONAIRE DATA LAYER — Phase 03 questions reader (read-only for questions)
+// Phase 10: GameResults 11→15 write/read implemented backward-compatibly (see saveGameResult, readGameResults_)
 // ---------------------------------------------------------------------------
 function _millionaireNormalizeBoolean_(v) {
   if (v === true || v === 1 || v === "1") return true;
