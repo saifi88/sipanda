@@ -825,5 +825,17 @@ const SAMPLE_GAMES = [
                 { left: "Kalimat ajakan memakai tanda ...", right: "seru" }
             ]
         }
+    },
+    // Phase 06A: Local fallback for Live Server / offline backend — ensures Millionaire appears in Game Hub without backend
+    // type === "millionaire" uses MillionaireQuestions (fallback) via MillionaireData, NOT Games.pairs
+    {
+        id: "millionaire-ipas-01",
+        type: "millionaire",
+        mapel: "IPAS",
+        title: "Millionaire SI-PANDA",
+        duration: 3,
+        isActive: true,
+        // pairs not used by Millionaire; keep minimal placeholder for card display compatibility
+        pairs: []
     }
 ];

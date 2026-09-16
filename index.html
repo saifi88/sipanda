@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SI-PANDA</title>
     
+    <link rel="stylesheet" href="millionaire/millionaire.css?v=17" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -51,8 +52,8 @@
     <div id="root"></div>
 
     <!-- Modul game (dimuat sebelum aplikasi utama) -->
-    <script type="text/babel" src="games/gameData.js?v=16"></script>
-    <script type="text/babel" src="games/GameShell.js?v=16"></script>
+    <script type="text/babel" src="games/gameData.js?v=17"></script>
+    <script type="text/babel" src="games/GameShell.js?v=17"></script>
     <script type="text/babel" src="games/MatchGame.js?v=16"></script>
     <script type="text/babel" src="games/MemoryGame.js?v=16"></script>
     <script type="text/babel" src="games/QuizRushGame.js?v=16"></script>
@@ -70,7 +71,11 @@
     <script type="text/babel" src="games/MazeGame.js?v=16"></script>
     <script type="text/babel" src="games/DefenseGame.js?v=16"></script>
     <script type="text/babel" src="games/FeedGame.js?v=16"></script>
-    <script type="text/babel" src="games/GameHub.js?v=16"></script>
+    <script type="text/babel" src="games/GameHub.js?v=17"></script>
+    <!-- Millionaire data layer (Phase 03) + game engine (Phase 04) — isolated, no 17-game change -->
+    <script type="text/babel" src="millionaire/MillionaireQuestions.js?v=17"></script>
+    <script type="text/babel" src="millionaire/MillionaireData.js?v=17"></script>
+    <script type="text/babel" src="millionaire/MillionaireGame.js?v=17"></script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -155,13 +160,23 @@
             const [gamePlayKey, setGamePlayKey] = useState(0);
             const [gameContextExamId, setGameContextExamId] = useState(null);
 
-            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [], games: [], gameResults: [] });
+            const [appData, setAppData] = useState({ settings: {}, students: [], exams: [], results: [], materi: [], games: [], gameResults: [], millionaireQuestions: [] });
 
             // Gunakan data game dari backend jika ada, jika belum pakai data contoh lokal (games/gameData.js)
-            const gamesList = (appData.games && appData.games.length > 0) ? appData.games : SAMPLE_GAMES;
+            // Phase 06A: ensure Millionaire appears on Live Server / offline when backend returns 17 without millionaire
+            // Do not duplicate if backend already sent type === "millionaire"
+            const baseGames = (appData.games && appData.games.length > 0) ? appData.games : SAMPLE_GAMES;
+            const hasMillionaire = Array.isArray(baseGames) && baseGames.some(function(g){ return g && g.type === "millionaire"; });
+            var _millionaireFallback = null;
+            try {
+              // Prefer explicit fallback entry from SAMPLE_GAMES if present, else create minimal
+              var fromSample = (typeof SAMPLE_GAMES !== "undefined" && Array.isArray(SAMPLE_GAMES)) ? SAMPLE_GAMES.find(function(g){ return g.type === "millionaire"; }) : null;
+              _millionaireFallback = fromSample ? Object.assign({}, fromSample) : { id: "millionaire-ipas-01", type: "millionaire", mapel: "IPAS", title: "Millionaire SI-PANDA", duration: 3, isActive: true, pairs: [] };
+            } catch(e){ _millionaireFallback = { id: "millionaire-ipas-01", type: "millionaire", mapel: "IPAS", title: "Millionaire SI-PANDA", duration: 3, isActive: true, pairs: [] }; }
+            const gamesList = hasMillionaire ? baseGames : baseGames.concat([_millionaireFallback]);
 
             useEffect(() => {
-                const APP_VERSION = "11.09.2026-v16";
+                const APP_VERSION = "11.09.2026-v17";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
@@ -180,8 +195,12 @@
                             results: data.results || [],
                             materi: data.materi || [],
                             games: data.games || [],
-                            gameResults: data.gameResults || []
+                            gameResults: data.gameResults || [],
+                            millionaireQuestions: data.millionaireQuestions || []
                         });
+                        // Expose production questions for MillionaireGame fallback-aware loader (Phase 04)
+                        try { window.__SIPANDA_MILLIONAIRE_PROD__ = data.millionaireQuestions || []; } catch(e){}
+                        try { window._sipandaAppData = { millionaireQuestions: data.millionaireQuestions || [] }; } catch(e){}
                         setLoading(false);
                     })
                     .catch(err => {
@@ -223,9 +242,11 @@
             };
 
             const finishGame = (result) => {
-                const levelEmojis = { mudah: "🌱", sedang: "🔥", sulit: "⚡" };
-                const levelSuffix = result.level ? ` [${levelEmojis[result.level] || ""} ${result.level}]` : "";
-                const record = {
+                // Millionaire level is numeric 1-15; existing games use "mudah"/"sedang"/"sulit" — both are String(level) for anti-farm
+                var isMillionaire = result.type === "millionaire";
+                var levelEmojis = { mudah: "🌱", sedang: "🔥", sulit: "⚡" };
+                var levelSuffix = isMillionaire && result.level ? (" [Lv " + result.level + "]") : (result.level ? (" [" + (levelEmojis[result.level] || "") + " " + result.level + "]") : "");
+                var record = {
                     waktu: new Date().toLocaleString("id-ID"),
                     nisn: currentUser.nisn,
                     nama: currentUser.name,
@@ -237,24 +258,55 @@
                     benar: result.benar,
                     salah: result.salah,
                     durasiDetik: result.durasiDetik,
-                    level: result.level || "sedang"
+                    level: String(result.level || (isMillionaire ? "0" : "sedang"))
                 };
+                // Millionaire additive fields — sent only if present, preserved for U2 15-col future (Phase 02 U2 still BLOCKED for write, so these are local-only until staging passes)
+                if (isMillionaire) {
+                    record.virtualRupiah = Number(result.virtualRupiah || 0);
+                    record.safeRupiah = Number(result.safeRupiah || 0);
+                    // Keep level numeric string for anti-farm
+                    var extraObj = result.extra;
+                    if (typeof extraObj === "string") {
+                        try { extraObj = JSON.parse(extraObj); } catch(e){ extraObj = { raw: extraObj }; }
+                    }
+                    if (!extraObj) extraObj = {};
+                    // Ensure walkAway/lifelines/prizeLadderSnapshot are inside extra
+                    if (result.walkAway !== undefined) extraObj.walkAway = !!result.walkAway;
+                    if (result.lifelinesUsed) extraObj.lifelinesUsed = result.lifelinesUsed;
+                    if (result.prizeLadderSnapshot) extraObj.prizeLadderSnapshot = result.prizeLadderSnapshot;
+                    else if (extraObj.prizeLadderSnapshot === undefined) {
+                        try {
+                            var ladder = (window.SIPANDA_MILLIONAIRE && window.SIPANDA_MILLIONAIRE.PRIZE_LADDER) ? window.SIPANDA_MILLIONAIRE.PRIZE_LADDER : [];
+                            extraObj.prizeLadderSnapshot = ladder.map(function(p,i){ return { level:i+1, prize:p, isSafe:[5,10,15].indexOf(i+1)!==-1 }; });
+                        } catch(e){}
+                    }
+                    record.extra = JSON.stringify(extraObj);
+                }
 
-                // Simpan lokal agar skor terbaik langsung tampil di Zona Game
-                setAppData(prev => ({ ...prev, gameResults: [...(prev.gameResults || []), record] }));
+                // Simpan lokal agar skor terbaik langsung tampil di Zona Game (also for Millionaire)
+                setAppData(function(prev){
+                    var next = { gameResults: [].concat(prev.gameResults || [], [record]) };
+                    // keep millionaireQuestions if present
+                    if (prev.millionaireQuestions) next.millionaireQuestions = prev.millionaireQuestions;
+                    return Object.assign({}, prev, next);
+                });
 
-                // Anti-farm: maksimal 1 penyimpanan per game per level per 30 detik (bonus-only)
-                const shouldPost = (typeof canSaveGameResult === "function")
-                    ? canSaveGameResult(currentUser.nisn, result.gameId, result.level)
+                // Anti-farm: maksimal 1 penyimpanan per game per level per 30 detik
+                // For Millionaire, level is String(levelReached) per Phase 03 §46
+                var shouldPost = (typeof canSaveGameResult === "function")
+                    ? canSaveGameResult(currentUser.nisn, result.gameId, String(result.level))
                     : true;
                 if (!shouldPost) return;
 
                 // Kirim ke backend (action "saveGameResult" di code.gs / code_v2.gs)
+                // U2: GameResults 15-col not yet deployed — backend currently expects 11 cols, so extra fields will be ignored until U2 staging passes.
+                // We still send them for forward-compat; backend will need to be updated to persist 12-15 after U2.
+                var payload = Object.assign({ action: "saveGameResult" }, record);
                 fetch(WEB_APP_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: "saveGameResult", ...record })
-                }).catch(err => console.error("Gagal menyimpan hasil game:", err));
+                    body: JSON.stringify(payload)
+                }).catch(function(err){ console.error("Gagal menyimpan hasil game:", err); });
             };
 
             const startExam = (exam) => {
@@ -643,7 +695,18 @@
                                 onReplay={replayGame}
                             />
                         )}
-                        {view === 'game' && activeGame && !['match', 'memory', 'quizrush', 'balloon', 'scramble', 'snake', 'truefalse', 'hangman', 'boss', 'sort', 'fillblank', 'race', 'tower', 'sequence', 'maze', 'defense', 'feed'].includes(activeGame.type) && (
+                        {view === 'game' && activeGame && activeGame.type === 'millionaire' && (
+                            <MillionaireGame
+                                key={gamePlayKey}
+                                game={Object.assign({}, activeGame, { productionQuestions: appData.millionaireQuestions })}
+                                currentUser={currentUser}
+                                onFinish={finishGame}
+                                onExit={exitGame}
+                                onReplay={replayGame}
+                                allQuestions={appData.millionaireQuestions}
+                            />
+                        )}
+                        {view === 'game' && activeGame && !['match', 'memory', 'quizrush', 'balloon', 'scramble', 'snake', 'truefalse', 'hangman', 'boss', 'sort', 'fillblank', 'race', 'tower', 'sequence', 'maze', 'defense', 'feed', 'millionaire'].includes(activeGame.type) && (
                             <MatchGame
                                 key={gamePlayKey}
                                 game={activeGame}

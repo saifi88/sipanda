@@ -1,0 +1,1028 @@
+/* millionaire/millionaire.css — Phase 06C Game-Show Fidelity & Reveal Skin
+ * Isolated via .sipanda-millionaire. No global selectors. No WWTBAM branding.
+ * Visual: dark navy + electric blue + gold, hexagonal pointed TV quiz panels,
+ * vertical prize ladder (gold border + arrow current), oval lifelines, studio bg.
+ * Keeps: B1-B4 studio backgrounds (WebP + PNG fallback), FSM data-state hooks,
+ * GREEN correct / RED wrong pulse (PERTAHANKAN), a11y, perf, responsive.
+ * Parent: Phase 06B high-fidelity skin → Phase 06C fidelity tuning to Game_Panel_Reference.png
+ */
+
+.sipanda-millionaire {
+  --navy: #020814;
+  --navy-mid: #07152f;
+  --navy-card: #0a1732;
+  --electric: #1ab4ff;
+  --electric-strong: #00bfff;
+  --electric-glow: rgba(26,180,255,0.58);
+  --electric-soft: rgba(26,180,255,0.18);
+  --electric-faint: rgba(26,180,255,0.10);
+  --gold: #ffb700;
+  --gold-bright: #ffcc33;
+  --gold-deep: #d4a017;
+  --gold-glow: rgba(255,183,0,0.38);
+  --gold-soft: rgba(255,183,0,0.12);
+  --gold-border: rgba(212,168,67,0.95);
+  --white: #ffffff;
+  --slate-100: #f1f5f9;
+  --slate-300: #cbd5e1;
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--white);
+}
+
+/* Background — studio atmosphere, never blocks UI */
+.sipanda-millionaire .millionaire-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--navy);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  transition: opacity 0.4s ease;
+}
+.sipanda-millionaire[data-mode="intro"] .millionaire-bg { background-image: url("./assets/backgrounds/desktop/B3-intro.webp"); }
+.sipanda-millionaire[data-mode="gameplay"] .millionaire-bg { background-image: url("./assets/backgrounds/desktop/B1-gameplay.webp"); }
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire[data-mode="intro"] .millionaire-bg { background-image: url("./assets/backgrounds/mobile/B4-intro.webp"); }
+  .sipanda-millionaire[data-mode="gameplay"] .millionaire-bg { background-image: url("./assets/backgrounds/mobile/B2-gameplay.webp"); }
+}
+@supports not (background-image: url("./assets/backgrounds/desktop/B1-gameplay.webp")) {
+  .sipanda-millionaire[data-mode="intro"] .millionaire-bg { background-image: url("./assets/backgrounds/desktop/B3-intro.png"); }
+  .sipanda-millionaire[data-mode="gameplay"] .millionaire-bg { background-image: url("./assets/backgrounds/desktop/B1-gameplay.png"); }
+  @media (max-width: 768px) and (orientation: portrait) {
+    .sipanda-millionaire[data-mode="intro"] .millionaire-bg { background-image: url("./assets/backgrounds/mobile/B4-intro.png"); }
+    .sipanda-millionaire[data-mode="gameplay"] .millionaire-bg { background-image: url("./assets/backgrounds/mobile/B2-gameplay.png"); }
+  }
+}
+.sipanda-millionaire .millionaire-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 600px at 50% 0%, rgba(26,180,255,0.10), transparent 68%),
+    radial-gradient(700px 500px at 50% 100%, rgba(255,183,0,0.07), transparent 62%),
+    linear-gradient(180deg, rgba(2,8,20,0.06) 0%, rgba(2,8,20,0.60) 100%);
+}
+
+/* Stage */
+.sipanda-millionaire .millionaire-stage {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0.35rem;
+}
+/* 06E: screen-reader-only + visually-suppressed controls (logic intact, reference composition clean) */
+.sipanda-millionaire .millionaire-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.sipanda-millionaire .millionaire-suppressed {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.sipanda-millionaire .millionaire-suppressed:focus-within {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+}
+
+/* Header — 06D: transparent row; brand is a compact 240-260px pill top-left (ref), timer/actions separate pills */
+.sipanda-millionaire .millionaire-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0.55rem 0.75rem 0.35rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.sipanda-millionaire .millionaire-header__brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.2;
+  gap: 2px;
+  width: 220px;
+  min-height: 56px;
+  padding: 0.4rem 0.9rem;
+  background: linear-gradient(180deg, rgba(8,20,48,0.92), rgba(4,12,30,0.96));
+  backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(26,180,255,0.38);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.07), 0 4px 20px rgba(2,8,20,0.45), 0 0 14px rgba(26,180,255,0.10);
+  flex: 0 0 auto;
+}
+.sipanda-millionaire .millionaire-header__title {
+  font-weight: 900;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+  text-shadow: 0 1px 8px rgba(26,180,255,0.22);
+}
+.sipanda-millionaire .millionaire-header__meta {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.96;
+}
+.sipanda-millionaire .millionaire-timer {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 900;
+  font-size: 0.92rem;
+  padding: 0.38rem 0.72rem;
+  border-radius: 9999px;
+  background: radial-gradient(120% 120% at 50% 0%, #0b1e3e, #050b1a);
+  color: #fff;
+  border: 1.5px solid rgba(26,180,255,0.42);
+  min-width: 3.1rem;
+  text-align: center;
+  box-shadow: 0 0 10px var(--electric-faint), inset 0 1px 0 rgba(255,255,255,0.10);
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.sipanda-millionaire .millionaire-timer--urgent {
+  background: radial-gradient(120% 120% at 50% 0%, #7f1d1d, #450a0a);
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(239,68,68,0.42);
+  animation: millionaire-pulse 0.9s ease-in-out infinite;
+}
+.sipanda-millionaire .millionaire-header__actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.sipanda-millionaire .millionaire-header__actions .millionaire-btn {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.74rem;
+}
+
+/* Layout — 06E reference-locked rebuild: gameplay cluster sits lower-middle,
+ * stage stays visible above question, ladder spans full right height */
+.sipanda-millionaire .millionaire-layout {
+  flex: 1;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0 1rem 0.6rem;
+  max-width: 1380px;
+  width: 100%;
+  margin: 0 auto;
+  align-content: start;
+  min-height: calc(100dvh - 70px);
+}
+@media (min-width: 769px) {
+  .sipanda-millionaire .millionaire-layout {
+    grid-template-columns: minmax(0, 1fr) 292px;
+    grid-template-rows: auto minmax(100px, 30vh) auto auto 1fr;
+    grid-template-areas:
+      "lifelines ladder"
+      "stage     ladder"
+      "question  ladder"
+      "answers   ladder"
+      "status    ladder";
+    column-gap: 1rem;
+    align-items: start;
+  }
+  .sipanda-millionaire .millionaire-question { grid-area: question; }
+  .sipanda-millionaire .millionaire-answers { grid-area: answers; }
+  .sipanda-millionaire .millionaire-lifelines { grid-area: lifelines; }
+  .sipanda-millionaire .millionaire-status--gamebar { grid-area: status; align-self: end; }
+  .sipanda-millionaire .millionaire-ladder { grid-area: ladder; align-self: start; }
+  .sipanda-millionaire .millionaire-stage-space { grid-area: stage; min-height: 0; }
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "lifelines"
+      "ladder"
+      "question"
+      "answers"
+      "status";
+    gap: 0.6rem;
+    min-height: 0;
+  }
+  .sipanda-millionaire .millionaire-stage-space { display: none; }
+  .sipanda-millionaire .millionaire-question { grid-area: question; min-width: 0; }
+  .sipanda-millionaire .millionaire-answers { grid-area: answers; min-width: 0; }
+  .sipanda-millionaire .millionaire-lifelines { grid-area: lifelines; }
+  .sipanda-millionaire .millionaire-status--gamebar { grid-area: status; min-width: 0; }
+  .sipanda-millionaire .millionaire-ladder { grid-area: ladder; min-width: 0; }
+  /* 06D mobile header: wrap, brand shrinks, no horizontal overflow */
+  .sipanda-millionaire .millionaire-header {
+    flex-wrap: wrap;
+    margin: 0.45rem 0.5rem 0.3rem;
+  }
+  .sipanda-millionaire .millionaire-header__brand {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 34px;
+    padding: 0.24rem 0.7rem;
+  }
+  .sipanda-millionaire .millionaire-header__title { font-size: 0.82rem; }
+  .sipanda-millionaire .millionaire-header__meta { font-size: 8.5px; }
+  .sipanda-millionaire .millionaire-header__actions { flex: 0 0 auto; }
+  .sipanda-millionaire .millionaire-header__actions .millionaire-btn {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.68rem;
+  }
+  .sipanda-millionaire .millionaire-timer {
+    font-size: 0.82rem;
+    padding: 0.32rem 0.6rem;
+    min-width: 2.6rem;
+  }
+  /* 06E mobile: lifelines fit 3-across, bar full-width */
+  .sipanda-millionaire .millionaire-lifeline {
+    min-height: 2.9rem;
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 0.4rem 0.3rem;
+    font-size: 1rem;
+  }
+  .sipanda-millionaire .millionaire-lifeline__glyph {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1rem;
+  }
+  .sipanda-millionaire .millionaire-status__bar {
+    width: 100%;
+    min-width: 0;
+  }
+  .sipanda-millionaire .millionaire-question {
+    min-height: 0;
+  }
+}
+
+/* Question panel — fidelity to reference: dark navy, double border, pronounced points */
+.sipanda-millionaire .millionaire-question {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #0c1c3e 0%, #07102a 55%, #050b1e 100%);
+  border: 2px solid var(--electric-strong);
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.12), 0 0 26px var(--electric-soft), inset 0 1px 0 rgba(255,255,255,0.07), 0 14px 36px rgba(2,8,20,0.56);
+  padding: 1.1rem 2.6rem;
+  min-height: clamp(120px, 19vh, 172px);
+  overflow: hidden;
+  clip-path: polygon(34px 0%, calc(100% - 34px) 0%, 100% 50%, calc(100% - 34px) 100%, 34px 100%, 0% 50%);
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-question {
+    clip-path: polygon(16px 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0% 50%);
+    padding: 0.95rem 1.15rem 0.9rem;
+  }
+}
+.sipanda-millionaire .millionaire-question::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  clip-path: polygon(32px 0%, calc(100% - 32px) 0%, 100% 50%, calc(100% - 32px) 100%, 32px 100%, 0% 50%);
+  border: 1px solid rgba(255,183,0,0.62);
+  pointer-events: none;
+  opacity: 0.95;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-question::before {
+    clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0% 50%);
+  }
+}
+.sipanda-millionaire .millionaire-question::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 64%;
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(255,183,0,0.95), transparent);
+  opacity: 0.9;
+}
+.sipanda-millionaire .millionaire-question__kicker {
+  position: relative;
+  z-index: 1;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+  opacity: 0.98;
+}
+.sipanda-millionaire .millionaire-question__text {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.3rem;
+  font-size: clamp(1.30rem, 2.4vw, 1.48rem);
+  font-weight: 800;
+  line-height: 1.28;
+  color: #f8fafc;
+  text-align: center;
+  text-shadow: 0 1px 10px rgba(26,180,255,0.20);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.sipanda-millionaire .millionaire-question__explanation {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.65rem;
+  font-size: 0.79rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(26,180,255,0.16);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  text-align: center;
+}
+
+/* Answers — same hexagonal family, fidelity to reference */
+.sipanda-millionaire .millionaire-answers {
+  display: grid;
+  gap: 0.55rem;
+}
+@media (min-width: 769px) { .sipanda-millionaire .millionaire-answers { grid-template-columns: 1fr 1fr; column-gap: 0.5rem; row-gap: 0.55rem; } }
+@media (max-width: 768px) { .sipanda-millionaire .millionaire-answers { grid-template-columns: 1fr; } }
+
+.sipanda-millionaire .millionaire-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  padding: 0.65rem 1.1rem 0.65rem 1.4rem;
+  min-height: 3.5rem;
+  background: linear-gradient(180deg, #0d1d3d 0%, #08112a 100%);
+  border: 1.7px solid rgba(26,180,255,0.46);
+  color: #f8fafc;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.05), 0 5px 20px rgba(2,8,20,0.44), 0 0 14px var(--electric-faint);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+  clip-path: polygon(18px 0%, calc(100% - 18px) 0%, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0% 50%);
+}
+@media (min-width: 769px) {
+  .sipanda-millionaire .millionaire-option {
+    min-height: 8.5vh;
+  }
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-option {
+    clip-path: polygon(12px 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0% 50%);
+    min-height: 3.25rem;
+    padding: 0.78rem 0.95rem;
+  }
+}
+/* inner gold hairline for answer (subtle, like reference secondary) */
+.sipanda-millionaire .millionaire-option::before {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  clip-path: polygon(16px 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0% 50%);
+  border: 1px solid rgba(255,183,0,0.18);
+  pointer-events: none;
+  opacity: 0.85;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-option::before {
+    clip-path: polygon(10px 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0% 50%);
+  }
+}
+.sipanda-millionaire .millionaire-option:focus-visible {
+  outline: none;
+  border-color: #7dd3fc;
+  box-shadow: 0 0 0 3px rgba(125,211,252,0.42), 0 0 22px var(--electric-glow);
+}
+.sipanda-millionaire .millionaire-option__label {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  font-weight: 900;
+  font-size: 1.06rem;
+  line-height: 1;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(255,183,0,0.22);
+  /* fidelity: inline gold text A: / B: — not circular badge (reference) */
+}
+.sipanda-millionaire .millionaire-option__text {
+  flex: 1;
+  font-weight: 750;
+  font-size: 0.96rem;
+  line-height: 1.28;
+  color: #f1f5f9;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.sipanda-millionaire .millionaire-option:hover:not(:disabled) {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.08), 0 0 18px var(--electric-glow), 0 7px 24px rgba(2,8,20,0.46);
+  filter: brightness(1.045);
+}
+/* Selected — gold amber premium (reference gold accent increase) */
+.sipanda-millionaire .millionaire-option--selected {
+  background: linear-gradient(180deg, #3a2500 0%, #1c1100 100%);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.20), 0 0 22px var(--gold-glow), 0 7px 26px rgba(2,8,20,0.5);
+}
+.sipanda-millionaire .millionaire-option--selected::before { border-color: rgba(255,183,0,0.42); }
+/* Locked — deeper gold + subtle scale + suspense */
+.sipanda-millionaire .millionaire-option--locked {
+  background: linear-gradient(180deg, #4a2f00 0%, #221600 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 0 24px var(--gold-glow);
+  transform: scale(1.012);
+}
+/* Correct — PERTAHANKAN green flash (Phase 06C mandatory) */
+.sipanda-millionaire .millionaire-option--correct {
+  background: linear-gradient(180deg, #0a2e1a 0%, #05230f 100%);
+  border-color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250,204,21,0.20), 0 0 26px rgba(34,197,94,0.36), 0 0 0 3px rgba(255,183,0,0.10);
+}
+.sipanda-millionaire .millionaire-option--correct .millionaire-option__label { color: #86efac; }
+.sipanda-millionaire .millionaire-option--correct::before { border-color: rgba(74,222,128,0.38); }
+/* Wrong — PERTAHANKAN red flash */
+.sipanda-millionaire .millionaire-option--wrong {
+  background: linear-gradient(180deg, #2e0a0a 0%, #1a0505 100%);
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239,68,68,0.16), 0 0 20px rgba(239,68,68,0.24);
+}
+.sipanda-millionaire .millionaire-option--wrong .millionaire-option__label { color: #fca5a5; }
+.sipanda-millionaire .millionaire-option--wrong::before { border-color: rgba(248,113,113,0.28); }
+.sipanda-millionaire .millionaire-option:disabled,
+.sipanda-millionaire .millionaire-option--disabled {
+  opacity: 0.50;
+  cursor: not-allowed;
+  filter: grayscale(0.18);
+}
+.sipanda-millionaire .millionaire-option--hidden {
+  opacity: 0.16;
+  border-style: dashed;
+  border-color: rgba(148,163,184,0.48);
+  pointer-events: none;
+  filter: grayscale(1);
+  transform: none !important;
+}
+
+/* Ladder — 06E: tall gold-framed panel, top ~6%, ends ~76% (reference) */
+.sipanda-millionaire .millionaire-ladder {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-self: start;
+  height: 70vh;
+  background: linear-gradient(180deg, rgba(9,22,52,0.98) 0%, rgba(5,12,30,0.99) 100%);
+  border: 1.8px solid var(--gold-border);
+  border-radius: 10px;
+  padding: 0.55rem 0.42rem;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.06), 0 10px 34px rgba(2,8,20,0.52), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(255,183,0,0.10);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.sipanda-millionaire .millionaire-ladder__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-ladder { max-height: 152px; display: flex; flex-direction: column; }
+}
+.sipanda-millionaire .millionaire-ladder__title {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--gold);
+  padding: 0.15rem 0.30rem 0.30rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,183,0,0.14);
+  margin-bottom: 0.30rem;
+  opacity: 0.95;
+}
+.sipanda-millionaire .millionaire-ladder__list {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 2px;
+  align-content: start;
+}
+@media (min-width: 769px) {
+  .sipanda-millionaire .millionaire-ladder__list {
+    grid-auto-rows: minmax(0, 1fr);
+    align-content: stretch;
+  }
+}
+.sipanda-millionaire .millionaire-ladder__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.30rem 0.55rem 0.30rem 0.52rem;
+  border-radius: 6px;
+  font-size: 0.80rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  color: #cbd5e1;
+  background: rgba(255,255,255,0.03);
+  transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+.sipanda-millionaire .millionaire-ladder__num { color: #f8fafc; font-variant-numeric: tabular-nums; min-width: 1.35rem; text-align: right; }
+.sipanda-millionaire .millionaire-ladder__prize { color: #ffcc33; font-weight: 900; }
+/* Current — gold bar with arrow point to right (reference fidelity) */
+.sipanda-millionaire .millionaire-ladder__item--current {
+  background: linear-gradient(90deg, #ffcc33 0%, #ffb700 55%, #ff8c00 100%);
+  color: #1a0f00;
+  border-color: #ffd54d;
+  transform: scale(1.02);
+  box-shadow: 0 0 16px var(--gold-glow), 0 4px 16px rgba(2,8,20,0.32);
+  /* arrow tip like reference: right-pointed */
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+  padding-right: 0.82rem;
+}
+.sipanda-millionaire .millionaire-ladder__item--current .millionaire-ladder__num,
+.sipanda-millionaire .millionaire-ladder__item--current .millionaire-ladder__prize { color: #1a0f00; }
+.sipanda-millionaire .millionaire-ladder__item--safe {
+  background: rgba(255,183,0,0.09);
+  border-color: rgba(255,183,0,0.24);
+  color: #ffe9a3;
+}
+.sipanda-millionaire .millionaire-ladder__item--safe .millionaire-ladder__prize { color: #ffec8a; }
+.sipanda-millionaire .millionaire-ladder__item--safe.millionaire-ladder__item--current {
+  background: linear-gradient(90deg, #ffb700 0%, #ff8c00 100%);
+  color: #1a0f00;
+  border-color: #ffec8a;
+  box-shadow: 0 0 18px var(--gold-glow);
+}
+.sipanda-millionaire .millionaire-ladder__item--reached {
+  background: rgba(16,185,129,0.10);
+  border-color: rgba(16,185,129,0.18);
+  color: #a7f3d0;
+}
+.sipanda-millionaire .millionaire-ladder__item--reached .millionaire-ladder__prize { color: #6ee7b7; }
+
+/* Lifelines — oval glowing controls (reference: 3 top-left ovals) */
+.sipanda-millionaire .millionaire-lifelines {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-lifelines { justify-content: center; }
+}
+.sipanda-millionaire .millionaire-lifeline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  padding: 0.5rem 1.1rem;
+  min-height: 3.9rem;
+  min-width: 7.5rem;
+  background: radial-gradient(140% 140% at 50% 0%, #102a5a, #050b1a);
+  border: 2px solid rgba(26,180,255,0.62);
+  border-radius: 9999px;
+  color: #f1f8ff;
+  font-weight: 900;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 18px var(--electric-soft), inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 14px rgba(2,8,20,0.36);
+  transition: transform 0.14s ease, opacity 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.sipanda-millionaire .millionaire-lifeline__glyph {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 1.25rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f1f8ff;
+  filter: drop-shadow(0 0 6px rgba(26,180,255,0.45));
+}
+.sipanda-millionaire svg.millionaire-lifeline__glyph {
+  stroke: #f1f8ff;
+  fill: none;
+}
+.sipanda-millionaire .millionaire-lifeline:focus-visible {
+  outline: none;
+  border-color: #7dd3fc;
+  box-shadow: 0 0 0 3px rgba(125,211,252,0.42), 0 0 18px var(--electric-glow);
+}
+.sipanda-millionaire .millionaire-lifeline:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #38bdf8;
+  box-shadow: 0 0 18px var(--electric-glow);
+}
+.sipanda-millionaire .millionaire-lifeline:disabled,
+.sipanda-millionaire .millionaire-lifeline--used {
+  opacity: 0.34;
+  background: rgba(15,23,42,0.58);
+  border-color: rgba(148,163,184,0.26);
+  color: #94a3b8;
+  cursor: not-allowed;
+  text-decoration: line-through;
+  text-decoration-color: #64748b;
+  box-shadow: none;
+}
+.sipanda-millionaire .millionaire-lifeline--active {
+  border-color: var(--gold);
+  background: radial-gradient(140% 140% at 50% 0%, #3b2500, #1a0f00);
+  color: #fef3c7;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.16), 0 0 18px var(--gold-glow);
+}
+.sipanda-millionaire .millionaire-lifeline__icon { font-size: 0.88rem; line-height: 1; }
+
+/* Status — bottom game bar like reference (single pill below answers) */
+.sipanda-millionaire .millionaire-status--gamebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: center;
+  flex-wrap: nowrap;
+  margin-bottom: 0.7rem;
+}
+.sipanda-millionaire .millionaire-status__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 760px;
+  min-width: 0;
+  min-height: 5.5vh;
+  margin: 0 auto;
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+  background: linear-gradient(180deg, rgba(8,20,48,0.84), rgba(5,12,28,0.96));
+  border: 1.4px solid rgba(26,180,255,0.28);
+  border-radius: 9999px;
+  padding: 0.32rem 0.45rem;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.06), 0 6px 22px rgba(2,8,20,0.40);
+  backdrop-filter: blur(10px);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #e0f2fe;
+}
+.sipanda-millionaire .millionaire-status__bar span { white-space: nowrap; }
+.sipanda-millionaire .millionaire-status__bar strong { color: var(--gold-bright); }
+.sipanda-millionaire .millionaire-status__pill {
+  background: rgba(8,20,48,0.72);
+  color: #e0f2fe;
+  border-radius: 9999px;
+  padding: 0.30rem 0.60rem;
+  font-weight: 800;
+  font-size: 11px;
+  border: 1px solid rgba(26,180,255,0.18);
+  backdrop-filter: blur(8px);
+}
+
+/* Buttons — dark studio */
+.sipanda-millionaire .millionaire-btn {
+  appearance: none;
+  border: 1.5px solid transparent;
+  border-radius: 9999px;
+  padding: 0.60rem 0.88rem;
+  font-weight: 900;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.sipanda-millionaire .millionaire-btn:active:not(:disabled) { transform: scale(0.97); }
+.sipanda-millionaire .millionaire-btn:focus-visible { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.42); }
+.sipanda-millionaire .millionaire-btn--primary {
+  background: linear-gradient(180deg, #0f172a, #020814);
+  color: #f8fafc;
+  border-color: rgba(26,180,255,0.30);
+  box-shadow: 0 4px 16px rgba(2,8,20,0.34), 0 0 10px var(--electric-faint);
+}
+.sipanda-millionaire .millionaire-btn--primary:hover:not(:disabled) { border-color: #38bdf8; }
+.sipanda-millionaire .millionaire-btn--accent {
+  background: linear-gradient(180deg, #ffcc33, #ffb700);
+  color: #1a0f00;
+  border-color: #ffd54d;
+  box-shadow: 0 4px 16px rgba(255,183,0,0.26), 0 0 12px var(--gold-glow);
+}
+.sipanda-millionaire .millionaire-btn--accent:hover:not(:disabled) { filter: brightness(1.04); }
+.sipanda-millionaire .millionaire-btn--ghost {
+  background: rgba(255,255,255,0.07);
+  color: #e0f2fe;
+  border-color: rgba(255,255,255,0.14);
+  backdrop-filter: blur(8px);
+}
+.sipanda-millionaire .millionaire-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.sipanda-millionaire .millionaire-btn--lock {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: auto;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  opacity: 0.96;
+}
+
+/* State visuals via [data-state] — no FSM change */
+.sipanda-millionaire[data-state="INTRO"] .millionaire-question,
+.sipanda-millionaire[data-state="READY"] .millionaire-question {
+  border-color: rgba(26,180,255,0.46);
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.09), 0 0 26px var(--electric-soft), 0 14px 36px rgba(2,8,20,0.56);
+}
+.sipanda-millionaire[data-state="LOCKED"] .millionaire-option--locked { animation: millionaire-lock 0.24s ease; }
+.sipanda-millionaire[data-state="REVEAL"] .millionaire-question { animation: millionaire-suspense 0.60s ease; }
+/* CORRECT green flash — at least twice (PERTAHANKAN) */
+.sipanda-millionaire[data-state="REVEAL"] .millionaire-option--correct,
+.sipanda-millionaire[data-state="CORRECT"] .millionaire-option--correct { animation: millionaire-correct-flash 0.36s ease-in-out 2; }
+.sipanda-millionaire[data-state="CORRECT"] .millionaire-question { border-color: #facc15; box-shadow: 0 0 0 1px rgba(250,204,21,0.20), 0 0 30px rgba(255,183,0,0.26), 0 0 0 3px rgba(16,185,129,0.12); }
+/* WRONG red flash — PERTAHANKAN */
+.sipanda-millionaire[data-state="REVEAL"] .millionaire-option--wrong,
+.sipanda-millionaire[data-state="WRONG"] .millionaire-option--wrong { animation: millionaire-wrong-flash 0.36s ease-in-out 2; }
+.sipanda-millionaire[data-state="WRONG"] .millionaire-option--correct { animation: millionaire-correct-flash 0.36s ease-in-out 2; }
+.sipanda-millionaire[data-state="WRONG"] .millionaire-question { border-color: rgba(239,68,68,0.56); box-shadow: 0 0 0 1px rgba(239,68,68,0.14), 0 0 20px rgba(239,68,68,0.16); }
+.sipanda-millionaire[data-state="VICTORY"] .millionaire-stage { animation: millionaire-victory 0.9s ease; }
+.sipanda-millionaire[data-state="FINISHED"] .millionaire-question { border-color: rgba(26,180,255,0.20); }
+
+/* Intro / finished — dark premium cards */
+.sipanda-millionaire .millionaire-intro,
+.sipanda-millionaire .millionaire-finished { max-width: 580px; margin: 0 auto; padding: 0.9rem; text-align: center; }
+.sipanda-millionaire .millionaire-card {
+  background: linear-gradient(180deg, rgba(10,22,52,0.96) 0%, rgba(5,11,26,0.98) 100%);
+  border: 1.5px solid rgba(26,180,255,0.22);
+  border-radius: 1.25rem;
+  padding: 1.2rem;
+  box-shadow: 0 0 0 1px rgba(255,183,0,0.05), 0 16px 44px rgba(2,8,20,0.54), 0 0 22px var(--electric-faint);
+  color: #f8fafc;
+}
+.sipanda-millionaire .millionaire-card--dark {
+  background: linear-gradient(180deg, rgba(8,20,48,0.96) 0%, rgba(3,8,20,0.98) 100%);
+  border-color: rgba(26,180,255,0.26);
+}
+
+/* Animations — light, purposeful */
+@keyframes millionaire-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@keyframes millionaire-lock { 0% { transform: scale(1); } 50% { transform: scale(1.015); } 100% { transform: scale(1.012); } }
+@keyframes millionaire-suspense { 0% { transform: translateY(0); } 25% { transform: translateY(-1px) scale(1.002); } 50% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+@keyframes millionaire-victory { 0% { filter: brightness(1); } 50% { filter: brightness(1.08); } 100% { filter: brightness(1); } }
+@keyframes millionaire-correct-flash {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 1px rgba(250,204,21,0.20), 0 0 26px rgba(34,197,94,0.36); }
+  50% { filter: brightness(1.24); box-shadow: 0 0 0 2px #86efac, 0 0 36px rgba(34,197,94,0.74), 0 0 46px rgba(255,183,0,0.20); }
+}
+@keyframes millionaire-wrong-flash {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 1px rgba(239,68,68,0.16), 0 0 20px rgba(239,68,68,0.22); }
+  50% { filter: brightness(1.18); box-shadow: 0 0 0 2px #fca5a5, 0 0 36px rgba(239,68,68,0.60), 0 0 26px rgba(239,68,68,0.34); }
+}
+@keyframes millionaire-fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.sipanda-millionaire .millionaire-fadeIn { animation: millionaire-fadeIn 0.22s ease-out; }
+
+/* Accessibility */
+.sipanda-millionaire :focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .sipanda-millionaire .millionaire-timer--urgent,
+  .sipanda-millionaire[data-state="LOCKED"] .millionaire-option--locked,
+  .sipanda-millionaire[data-state="REVEAL"] .millionaire-question,
+  .sipanda-millionaire[data-state="VICTORY"] .millionaire-stage,
+  .sipanda-millionaire .millionaire-fadeIn {
+    animation: none !important;
+  }
+  .sipanda-millionaire * { transition: none !important; }
+}
+
+/* Touch / wrapping / perf */
+.sipanda-millionaire button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sipanda-millionaire .millionaire-option__text,
+.sipanda-millionaire .millionaire-question__text { min-width: 0; }
+.sipanda-millionaire .millionaire-option,
+.sipanda-millionaire .millionaire-lifeline { will-change: transform; contain: layout style; }
+/* PHASE 07 pre-game: contestant + mapel selection (additive, scoped, no engine change) */
+.sipanda-millionaire .millionaire-pregame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  min-height: 0;
+}
+.sipanda-millionaire .millionaire-pregame__card {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 1.4rem 1.2rem;
+}
+.sipanda-millionaire .millionaire-pregame__brand {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  opacity: 0.95;
+}
+.sipanda-millionaire .millionaire-pregame__welcome {
+  margin: 0.35rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  color: #f8fafc;
+}
+.sipanda-millionaire .millionaire-pregame__avatar {
+  width: 64px;
+  height: 64px;
+  margin: 0.8rem auto 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--gold-bright);
+  background: radial-gradient(140% 140% at 50% 0%, #102a5a, #050b1a);
+  border: 2px solid rgba(26, 180, 255, 0.55);
+  border-radius: 9999px;
+  box-shadow: 0 0 18px var(--electric-soft);
+}
+.sipanda-millionaire .millionaire-pregame__name {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #f8fafc;
+}
+.sipanda-millionaire .millionaire-pregame__kelas {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.sipanda-millionaire .millionaire-pregame__mapel-title {
+  margin: 1.1rem 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #e0f2fe;
+}
+.sipanda-millionaire .millionaire-pregame__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.sipanda-millionaire .millionaire-pregame__mapel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  color: #f1f5f9;
+  background: linear-gradient(180deg, #0d1d3d 0%, #08112a 100%);
+  border: 1.5px solid rgba(26, 180, 255, 0.35);
+  border-radius: 0.9rem;
+  box-shadow: 0 4px 16px rgba(2, 8, 20, 0.4);
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.sipanda-millionaire .millionaire-pregame__mapel:hover { border-color: #38bdf8; }
+.sipanda-millionaire .millionaire-pregame__mapel:focus-visible {
+  outline: none;
+  border-color: #7dd3fc;
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.42);
+}
+.sipanda-millionaire .millionaire-pregame__mapel--selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(255, 183, 0, 0.25), 0 0 18px var(--gold-glow);
+}
+.sipanda-millionaire .millionaire-pregame__mapel--invalid { opacity: 0.75; }
+.sipanda-millionaire .millionaire-pregame__mapel-name {
+  font-weight: 900;
+  font-size: 0.86rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sipanda-millionaire .millionaire-pregame__badge {
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  font-weight: 900;
+  white-space: nowrap;
+  padding: 0.25rem 0.55rem;
+  border-radius: 9999px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.sipanda-millionaire .millionaire-pregame__badge--ready {
+  color: #1a0f00;
+  background: linear-gradient(180deg, #ffcc33, #ffb700);
+  border-color: #ffd54d;
+}
+.sipanda-millionaire .millionaire-pregame__ready {
+  margin: 0.7rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #6ee7b7;
+}
+.sipanda-millionaire .millionaire-pregame__error {
+  margin: 0.7rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fca5a5;
+}
+.sipanda-millionaire .millionaire-pregame__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  align-items: stretch;
+  justify-content: center;
+}
+.sipanda-millionaire .millionaire-pregame__start { flex: 1 1 auto;
+  min-height: 44px;
+}
+.sipanda-millionaire .millionaire-pregame__actions .millionaire-btn--ghost { flex: 0 0 auto;
+  min-height: 44px;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+  .sipanda-millionaire .millionaire-pregame { padding: 0.75rem; }
+  .sipanda-millionaire .millionaire-pregame__card { padding: 1.1rem 0.9rem; }
+  .sipanda-millionaire .millionaire-pregame__grid { grid-template-columns: 1fr; }
+  .sipanda-millionaire .millionaire-pregame__actions { flex-direction: column; }
+  .sipanda-millionaire .millionaire-pregame__actions .millionaire-btn { width: 100%; }
+}
+
+@media print { .sipanda-millionaire .millionaire-bg { display: none; } }
+
+/* PATCH 06E-EXIT-RESTORE (visual only, no logic/FSM/geometry change):
+ * Restore [TIMER][KELUAR DENGAN HADIAH][KEMBALI] as one compact top-right group.
+ * Timer keeps existing countdown + 30s + urgent (<=5s) animation; only paint restored.
+ * Handlers/guards untouched in MillionaireGame.js. No question/answer/ladder/lifeline/status change. */
+.sipanda-millionaire .millionaire-header__actions {
+  margin-left: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.sipanda-millionaire .millionaire-header__actions .millionaire-btn--accent {
+  background: linear-gradient(180deg, #ffcc33, #ffb700);
+  color: #1a0f00;
+  border-color: #ffd54d;
+  padding: 0.42rem 0.65rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.sipanda-millionaire .millionaire-header__actions .millionaire-btn--ghost {
+  background: linear-gradient(180deg, #0f1f42, #050b1a);
+  color: #e0f2fe;
+  border: 1.5px solid rgba(26, 180, 255, 0.55);
+  box-shadow: 0 0 10px var(--electric-faint), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 0.42rem 0.65rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .sipanda-millionaire .millionaire-header__actions {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .sipanda-millionaire .millionaire-header__actions .millionaire-btn--accent,
+  .sipanda-millionaire .millionaire-header__actions .millionaire-btn--ghost {
+    padding: 0.36rem 0.55rem;
+    font-size: 0.66rem;
+  }
+}
