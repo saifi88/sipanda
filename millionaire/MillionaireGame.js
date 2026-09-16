@@ -641,9 +641,9 @@ function MillionaireGame(props) {
               <h2 className="text-xl font-black">{_state.highestLevel===15 ? "VICTORY!" : _state.walkAway ? "SAFE EXIT" : _state.wrong ? "GAME OVER" : "SELESAI"}</h2>
               <p className="text-xs text-slate-500">Level: {_state.highestLevel} / 15 • Benar: {_state.correct} • Salah: {_state.wrong}</p>
               <div className="grid grid-cols-3 gap-2 text-xs mt-4">
-                <div className="bg-slate-50 rounded-xl p-3 border"><div className="font-black text-lg">{skor}</div><div>skor</div></div>
-                <div className="bg-emerald-50 rounded-xl p-3 border"><div className="font-black text-lg">{_state.virtualRupiah}</div><div>Rupiah</div></div>
-                <div className="bg-blue-50 rounded-xl p-3 border"><div className="font-black text-lg">{_state.safeRupiah}</div><div>safe</div></div>
+                <div className="bg-slate-50 rounded-xl p-3 border"><div className="font-black text-lg leading-tight break-words tabular-nums text-slate-900">{skor}</div><div className="text-slate-500 font-bold">skor</div></div>
+                <div className="bg-emerald-50 rounded-xl p-3 border"><div className="font-black text-lg leading-tight break-words tabular-nums text-emerald-800">Rp{Number(_state.virtualRupiah || 0).toLocaleString("id-ID")}</div><div className="text-emerald-700 font-bold">Rupiah</div></div>
+                <div className="bg-blue-50 rounded-xl p-3 border"><div className="font-black text-lg leading-tight break-words tabular-nums text-blue-800">Rp{Number(_state.safeRupiah || 0).toLocaleString("id-ID")}</div><div className="text-blue-700 font-bold">safe</div></div>
               </div>
               <p className="text-xs text-slate-500 mt-3">Fifty:{_state.lifelinesUsed.fiftyFifty?"Y":"-"} Kelas:{_state.lifelinesUsed.askClass?"Y":"-"} Teman:{_state.lifelinesUsed.askFriend?"Y":"-"}</p>
               <div className="flex gap-2 mt-4">
