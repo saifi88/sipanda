@@ -75,7 +75,7 @@
     <!-- Millionaire data layer (Phase 03) + game engine (Phase 04) — isolated, no 17-game change -->
     <script type="text/babel" src="millionaire/MillionaireQuestions.js?v=17"></script>
     <script type="text/babel" src="millionaire/MillionaireData.js?v=17"></script>
-    <script type="text/babel" src="millionaire/MillionaireGame.js?v=17"></script>
+    <script type="text/babel" src="millionaire/MillionaireGame.js?v=18"></script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -176,7 +176,7 @@
             const gamesList = hasMillionaire ? baseGames : baseGames.concat([_millionaireFallback]);
 
             useEffect(() => {
-                const APP_VERSION = "11.09.2026-v17";
+                const APP_VERSION = "11.09.2026-v18";
                 const savedVersion = localStorage.getItem("sipanda_version");
                 
                 if (savedVersion !== APP_VERSION) {
