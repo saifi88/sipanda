@@ -1,27 +1,32 @@
-# PHASE 10H — AUDIT: MILLIONAIRE GAME HUB PRIORITY
+# PHASE 10H — AUDIT: MILLIONAIRE GAME HUB PRIORITY (+ FIX const reassignment)
 
-**Tanggal:** 2026-09-16
+**Tanggal:** 2026-09-16 (FIX: 2026-09-16)
 **Scope:** satu-satunya file diubah: `games/GameHub.js` (+ docs audit).
 **Hasil:** PASS — siap checkpoint, tanpa deployment, tanpa backend, tanpa refactor besar.
+**FIX:** Runtime error `TypeError: "shownGames" is read-only` diperbaiki tanpa assignment ulang const.
 
 ---
 
-## 1. Exact change (`games/GameHub.js`, +4/−0)
+## 1. Exact change (`games/GameHub.js`, +6/−2 — FIX const reassignment)
 
-Setelah `shownGames` difilter di lines 15–18 (filter Mapel + Query), ditambahkan 4 baris:
+Setelah `shownGames` difilter di lines 15–18 (filter Mapel + Query), ditambahkan 3 baris dan 2 referensi downstream diganti tanpa reassignment:
 
 ```javascript
-// Phase 10H: prioritize Millionaire game to front, preserve 17-game order
+// Phase 10H-FIX: prioritize Millionaire game to front, preserve 17-game order (no const reassignment)
 const millionaireGames = shownGames.filter(g => g.type === "millionaire");
 const otherGames = shownGames.filter(g => g.type !== "millionaire");
-shownGames = [...millionaireGames, ...otherGames];
+const orderedGames = [...millionaireGames, ...otherGames];
 ```
+
+Downstream: `totalStars` fallback `shownGames.reduce` → `orderedGames.reduce`, render guard `shownGames.length` → `orderedGames.length`, grid `shownGames.map` → `orderedGames.map`. `shownGames` tetap `const` dan tidak pernah di-assign ulang.
+
+**Root cause FIX:** Phase 10H melakukan `shownGames = [...]` padahal `shownGames` dideklarasikan `const` → runtime `TypeError: "shownGames" is read-only` → white screen. FIX menghindari assignment ulang dengan variabel baru `orderedGames`.
 
 **Mekanisme:**
 - `shownGames` sudah difilter berdasarkan Mapel + Query (lines 15–18).
 - Dipisahkan menjadi 2 grup: `millionaireGames` (type === "millionaire") dan `otherGames` (sisa).
-- Dikompulkan kembali: `[...millionaireGames, ...otherGames]`.
-- Jika tidak ada millionaire, `millionaireGames` kosong → `shownGames` tetap tanpa perubahan (no-op).
+- Digabungkan: `[...millionaireGames, ...otherGames]` ke `orderedGames`.
+- Jika tidak ada millionaire, `millionaireGames` kosong → `orderedGames === shownGames` (no-op).
 
 **Tidak diubah:**
 - `games` data source (backend/sheet) — tidak pernah disentuh.
@@ -65,8 +70,26 @@ shownGames = [...millionaireGames, ...otherGames];
 
 ---
 
-## 5. Status: PASS
+## 5. Validasi FIX (console + render)
 
-- Hanya `games/GameHub.js` yang diubah (4 baris komentar + kode).
+| No | Validasi | Hasil |
+|---|---|---|
+| F1 | Browser console tidak menunjukkan `shownGames is read-only` (`shownGames =` tidak ada, grep 0 hit) | PASS |
+| F2 | Game Hub berhasil render (orderedGames.length / .map valid) | PASS |
+| F3 | Millionaire posisi pertama (orderedGames[0].type === "millionaire" bila ada) | PASS |
+| F4 | 17 game existing tetap tampil dan urut relatif (otherGames preserve order) | PASS |
+| F5 | Klik Millionaire tetap membuka MillionaireGame (onPlay(game) unchanged, game object utuh) | PASS |
+| F6 | Tanpa Millionaire → perilaku normal (millionaireGames=[] → orderedGames===shownGames) | PASS |
+| F7 | Tidak ada layar putih / runtime error (const tidak di-assign ulang) | PASS |
+| F8 | Regression 17 game PASS (hanya urutan presentation/render, bukan data) | PASS |
+
+**Bukti statik:**
+- `grep shownGames` → 3 hit hanya deklarasi `const shownGames` + 2 filter turunan, 0 assignment.
+- `grep orderedGames` → 4 hit: deklarasi + totalStars + length guard + map.
+- `git diff --stat` → `games/GameHub.js | 8 ++++----` (minimal, tanpa sentuh GameShell/Millionaire/backend).
+
+## 6. Status: PASS (FIX verified)
+
+- Hanya `games/GameHub.js` yang diubah (FIX: 3 baris baru + 2 referensi diganti, total 6 +/−2).
 - Tidak ada deployment, tidak ada perubahan backend.
 - JANGAN deploy pada phase ini.

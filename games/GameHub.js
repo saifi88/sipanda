@@ -16,10 +16,10 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
         (filterMapel === "Semua" || g.mapel === filterMapel) &&
         (!query.trim() || String(g.title).toLowerCase().includes(query.trim().toLowerCase()))
     );
-    // Phase 10H: prioritize Millionaire game to front, preserve 17-game order
+    // Phase 10H-FIX: prioritize Millionaire game to front, preserve 17-game order (no const reassignment)
     const millionaireGames = shownGames.filter(g => g.type === "millionaire");
     const otherGames = shownGames.filter(g => g.type !== "millionaire");
-    shownGames = [...millionaireGames, ...otherGames];
+    const orderedGames = [...millionaireGames, ...otherGames];
 
     const bestScoreFor = (gameId) => {
         if (typeof bestScoreForGame === "function") return bestScoreForGame(gameResults, currentUser.nisn, gameId);
@@ -36,7 +36,7 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
 
     const myResults = (gameResults || []).filter(r => String(r.nisn) === String(currentUser.nisn));
     const totalPlayed = new Set(myResults.map(r => r.gameId)).size;
-    const totalStars = myResults.reduce((acc, r) => acc, 0) || shownGames.reduce((acc, g) => {
+    const totalStars = myResults.reduce((acc, r) => acc, 0) || orderedGames.reduce((acc, g) => {
         const b = bestScoreFor(g.id);
         return acc + (b === null ? 0 : scoreToStars(b));
     }, 0);
@@ -95,7 +95,7 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
                 })}
             </div>
 
-            {shownGames.length === 0 ? (
+            {orderedGames.length === 0 ? (
                 <div className="text-center py-14 bg-white rounded-[1.75rem] border-2 border-dashed border-slate-200 shadow-sm">
                     <div className="text-6xl mb-3 game-float inline-block">🕹️</div>
                     <p className="font-black text-slate-700">Belum ada game di sini</p>
@@ -103,7 +103,7 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {shownGames.map((game, gi) => {
+                    {orderedGames.map((game, gi) => {
                         const theme = (typeof gameTheme === "function" ? gameTheme(game.type) : null) || ((typeof GAME_TYPE_META !== "undefined" && GAME_TYPE_META[game.type]) || { label: game.type, emoji: "🎲", desc: "", grad: "from-violet-500 to-fuchsia-500", soft: "bg-violet-100 text-violet-700" });
                         const best = bestScoreFor(game.id);
                         const linkedTitle = examTitleFor(game);
