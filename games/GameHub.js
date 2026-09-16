@@ -16,6 +16,10 @@ function GameHub({ games, gameResults, currentUser, onPlay, onBack, exams = [], 
         (filterMapel === "Semua" || g.mapel === filterMapel) &&
         (!query.trim() || String(g.title).toLowerCase().includes(query.trim().toLowerCase()))
     );
+    // Phase 10H: prioritize Millionaire game to front, preserve 17-game order
+    const millionaireGames = shownGames.filter(g => g.type === "millionaire");
+    const otherGames = shownGames.filter(g => g.type !== "millionaire");
+    shownGames = [...millionaireGames, ...otherGames];
 
     const bestScoreFor = (gameId) => {
         if (typeof bestScoreForGame === "function") return bestScoreForGame(gameResults, currentUser.nisn, gameId);
